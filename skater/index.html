@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miguelo Skater</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 90vh;
+            touch-action: manipulation;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            width: 80%;
+            max-width: 300px;
+            z-index: 30;
+        }
+
+        .game-over button {
+            background-color: #FFD700;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .start-screen h1 {
+            font-size: min(80px, 15vw);
+            color: #FFD700;
+            text-shadow: 3px 3px 0 #8B4513;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .start-screen button {
+            background-color: #FFD700;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: min(24px, 5vw);
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #8B4513;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .start-screen button:hover {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #8B4513;
+        }
+
+        .audio-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 20;
+        }
+
+        .audio-controls button {
+            background-color: #FFD700;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .audio-status {
+            position: absolute;
+            bottom: 50px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+            z-index: 20;
+        }
+
+        /* Estilos para el tutorial */
+        .tutorial-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .tutorial-title {
+            color: #8B4513;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+
+        .tutorial-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .tutorial-section {
+            width: 100%;
+        }
+
+        .tutorial-section h3 {
+            color: #FFD700;
+            text-shadow: 1px 1px 0 #8B4513;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .tutorial-section ul {
+            padding-left: 15px;
+            margin: 0;
+        }
+
+        .tutorial-section li {
+            margin-bottom: 6px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .tutorial-icon {
+            display: inline-block;
+            background-color: #FFD700;
+            color: #8B4513;
+            width: 22px;
+            height: 22px;
+            text-align: center;
+            line-height: 22px;
+            border-radius: 4px;
+            margin-right: 6px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .power-ups {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .power-up {
+            display: flex;
+            align-items: center;
+            background-color: #f5f5f5;
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .power-up-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            margin-right: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+
+        .shield-icon {
+            background-color: #1E90FF;
+        }
+
+        .jump-icon {
+            background-color: #FF4500;
+        }
+
+        /* Estilos para tablets y pantallas medianas */
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+            }
+
+            .tutorial-sections {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .tutorial-section {
+                flex: 1;
+                min-width: 200px;
+            }
+
+            .tutorial-title {
+                font-size: 24px;
+            }
+
+            .tutorial-section h3 {
+                font-size: 20px;
+            }
+
+            .tutorial-section li {
+                font-size: 16px;
+            }
+
+            .power-ups {
+                flex-direction: row;
+                gap: 10px;
+            }
+        }
+
+        /* Estilos para orientación landscape en móviles */
+        @media (orientation: landscape) and (max-height: 500px) {
+            body {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 5px;
+            }
+
+            .game-container {
+                margin-bottom: 5px;
+                max-width: 70%;
+            }
+
+            .tutorial-container {
+                max-width: 25%;
+                margin-left: 10px;
+                margin-bottom: 5px;
+                padding: 10px;
+            }
+
+            .tutorial-title {
+                font-size: 16px;
+                margin-bottom: 8px;
+            }
+
+            .tutorial-section h3 {
+                font-size: 14px;
+                margin-bottom: 5px;
+            }
+
+            .tutorial-section li {
+                margin-bottom: 4px;
+                font-size: 12px;
+            }
+
+            .power-up {
+                padding: 3px 6px;
+                font-size: 12px;
+            }
+
+            .power-up-icon {
+                width: 18px;
+                height: 18px;
+            }
+        }
+
+        /* Estilos específicos para móviles en orientación vertical (portrait) */
+        @media (orientation: portrait) and (max-width: 767px) {
+            body {
+                flex-direction: column;
+                padding: 10px;
+            }
+
+            .game-container {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+
+            .tutorial-container {
+                width: 100%;
+                margin-left: 0;
+                padding: 12px;
+            }
+
+            .tutorial-sections {
+                flex-direction: column;
+            }
+
+            .tutorial-section {
+                width: 100%;
+                margin-bottom: 12px;
+            }
+
+            .tutorial-title {
+                font-size: 18px;
+                margin-bottom: 10px;
+            }
+
+            .tutorial-section h3 {
+                font-size: 16px;
+            }
+
+            .tutorial-section li {
+                font-size: 14px;
+                margin-bottom: 5px;
+            }
+
+            .power-up {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div class="start-screen" id="startScreen">
+            <h1>MIGUELO</h1>
+            <button id="startButton">START</button>
+        </div>
+        <div class="game-over" id="gameOverScreen">
+            <h2>¡Game Over!</h2>
+            <p>Puntaje: <span id="finalScore">0</span></p>
+            <p>Bananas recolectadas: <span id="finalBananas">0</span></p>
+            <button id="restartButton">Jugar de nuevo</button>
+        </div>
+        <div class="audio-controls">
+            <button id="muteButton">🔊</button>
+        </div>
+        <div class="audio-status" id="audioStatus"></div>
+    </div>
+    
+    <!-- Tutorial del juego -->
+    <div class="tutorial-container">
+        <h2 class="tutorial-title">¿Cómo jugar a Miguelo Skater?</h2>
+        
+        <div class="tutorial-sections">
+            <div class="tutorial-section">
+                <h3>Controles</h3>
+                <ul>
+                    <li><span class="tutorial-icon">⌨️</span> <strong>Teclado:</strong> Presiona la barra espaciadora para saltar</li>
+                    <li><span class="tutorial-icon">👆</span> <strong>Móvil:</strong> Toca la pantalla para saltar</li>
+                    <li><span class="tutorial-icon">🔊</span> Botón de sonido para activar/desactivar la música</li>
+                </ul>
+            </div>
+            
+            <div class="tutorial-section">
+                <h3>Objetivo</h3>
+                <ul>
+                    <li>Evita los obstáculos saltando sobre ellos</li>
+                    <li>Recoge bananas para aumentar tu puntuación</li>
+                    <li>¡Sobrevive el mayor tiempo posible!</li>
+                </ul>
+            </div>
+            
+            <div class="tutorial-section">
+                <h3>Power-Ups</h3>
+                <div class="power-ups">
+                    <div class="power-up">
+                        <div class="power-up-icon shield-icon">S</div>
+                        <span>Escudo: Te protege de un obstáculo</span>
+                    </div>
+                    <div class="power-up">
+                        <div class="power-up-icon jump-icon">2J</div>
+                        <span>Doble Salto: Permite saltar dos veces</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Elemento de audio para la música de fondo -->
+    <audio id="gameMusic" loop>
+        <source src="public/audio/miguelo-banana.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+
+    <script>
+        // Configuración del juego
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreElement = document.getElementById('finalScore');
+        const finalBananasElement = document.getElementById('finalBananas');
+        const restartButton = document.getElementById('restartButton');
+        const gameMusic = document.getElementById('gameMusic');
+        const muteButton = document.getElementById('muteButton');
+        const audioStatus = document.getElementById('audioStatus');
+        
+        // Configuración de tamaño y escala
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 400;
+        let scale = 1;
+        
+        // Estado de la música
+        let isMuted = false;
+        let audioLoaded = false;
+
+        // Variables del juego
+        let score = 0;
+        let gameSpeed = 5;
+        let gameOver = false;
+        let animationId;
+        let lastObstacleTime = 0;
+        let obstacleInterval = 1500; // Tiempo entre obstáculos en ms
+        let speedIncreaseInterval = 5000; // Aumentar velocidad cada 5 segundos
+        let lastSpeedIncreaseTime = 0;
+        let bananasCollected = 0;
+        let doubleJumpEnabled = false;
+        let canDoubleJump = false;
+        let shieldActive = false;
+        let shieldTime = 0;
+        let lastCollectibleTime = 0;
+        let collectibleInterval = 1000; // Tiempo entre coleccionables en ms
+        let imageLoaded = false;
+
+        // Variables para el fondo
+        const backgroundLayers = {
+            // Nubes
+            clouds: {
+                y: 0,
+                height: 120,
+                elements: [],
+                speed: 0.5,
+                nextElement: 0
+            },
+            // Montañas lejanas
+            farMountains: {
+                y: 120,
+                height: 100,
+                elements: [],
+                speed: 1,
+                nextElement: 0
+            },
+            // Montañas cercanas
+            nearMountains: {
+                y: 180,
+                height: 150,
+                elements: [],
+                speed: 2,
+                nextElement: 0
+            }
+        };
+        
+        // Función para ajustar el tamaño del canvas
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth;
+            
+            // Mantener la proporción del canvas
+            const aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
+            const containerHeight = containerWidth / aspectRatio;
+            
+            // Establecer el factor de escala para los elementos del juego
+            scale = containerWidth / CANVAS_WIDTH;
+            
+            // Actualizar el tamaño del canvas en el DOM
+            canvas.style.width = `${containerWidth}px`;
+            canvas.style.height = `${containerHeight}px`;
+            
+            // Mantener el tamaño interno del canvas para dibujo
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+        }
+
+        // Función para mostrar el estado del audio (para depuración)
+        function showAudioStatus(message) {
+            audioStatus.textContent = message;
+            audioStatus.style.display = 'block';
+            setTimeout(() => {
+                audioStatus.style.display = 'none';
+            }, 3000);
+        }
+
+        // Generar elementos iniciales del fondo
+        function initBackgroundElements() {
+            // Limpiar elementos existentes
+            backgroundLayers.clouds.elements = [];
+            backgroundLayers.farMountains.elements = [];
+            backgroundLayers.nearMountains.elements = [];
+            
+            // Generar nubes
+            for (let x = 0; x < canvas.width; x += 200) {
+                const width = 80 + Math.random() * 120;
+                const height = 40 + Math.random() * 30;
+                backgroundLayers.clouds.elements.push({
+                    x: x + Math.random() * 100,
+                    width: width,
+                    height: height
+                });
+            }
+            
+            // Generar montañas lejanas
+            for (let x = 0; x < canvas.width; x += 120) {
+                const width = 100 + Math.random() * 80;
+                const height = 60 + Math.random() * 40;
+                backgroundLayers.farMountains.elements.push({
+                    x: x,
+                    width: width,
+                    height: height
+                });
+            }
+            
+            // Generar montañas cercanas
+            for (let x = 0; x < canvas.width; x += 150) {
+                const width = 120 + Math.random() * 100;
+                const height = 80 + Math.random() * 70;
+                backgroundLayers.nearMountains.elements.push({
+                    x: x,
+                    width: width,
+                    height: height
+                });
+            }
+        }
+
+        // Cargar imagen de la banana
+        const bananaImg = new Image();
+        bananaImg.src = "public/images/miguelo.png"; // Usar ruta local correcta
+        // Ya no necesitamos crossOrigin para archivos locales
+
+        // Objeto banana
+        const banana = {
+            x: 50,
+            y: canvas.height - 100,
+            width: 60,
+            height: 80,
+            jumping: false,
+            jumpHeight: 15,
+            gravity: 0.8,
+            velocity: 0
+        };
+
+        // Array de obstáculos
+        const obstacles = [];
+
+        // Array de coleccionables
+        const collectibles = [];
+
+        // Array de power-ups
+        const powerUps = [];
+
+        // Tipos de power-ups
+        const powerUpTypes = [
+            {
+                type: 'shield',
+                color: '#1E90FF', // Azul
+                duration: 5000, // 5 segundos
+                radius: 15
+            },
+            {
+                type: 'doubleJump',
+                color: '#FF4500', // Naranja rojizo
+                duration: 10000, // 10 segundos
+                radius: 15
+            }
+        ];
+
+        // Función para controlar la música
+        function toggleMute() {
+            isMuted = !isMuted;
+            gameMusic.muted = isMuted;
+            muteButton.textContent = isMuted ? '🔇' : '🔊';
+            
+            if (!isMuted && !gameOver) {
+                playMusic();
+            } else {
+                pauseMusic();
+            }
+        }
+        
+        // Función para iniciar la música
+        function playMusic() {
+            if (isMuted) return;
+            
+            // Siempre reiniciar la música desde el principio
+            gameMusic.currentTime = 0;
+            gameMusic.volume = 0.7; // Ajustar volumen para que no sea demasiado alto
+            
+            // Intentar reproducir la música
+            const playPromise = gameMusic.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    // La reproducción se inició correctamente
+                    showAudioStatus("🎵 Música reproduciendo");
+                }).catch(error => {
+                    // La reproducción automática fue bloqueada
+                    showAudioStatus("❌ Error: " + error.message);
+                    
+                    // Intentar reproducir después de una interacción del usuario
+                    document.addEventListener('click', function playOnClick() {
+                        gameMusic.currentTime = 0; // Asegurarse de reiniciar también aquí
+                        gameMusic.play().catch(e => showAudioStatus("Error persistente: " + e.message));
+                        document.removeEventListener('click', playOnClick);
+                    }, { once: true });
+                });
+            }
+        }
+        
+        // Función para pausar la música
+        function pauseMusic() {
+            gameMusic.pause();
+            showAudioStatus("🔇 Música pausada");
+        }
+
+        // Función para dibujar la banana
+        function drawBanana() {
+            // Activar suavizado de imagen para mejorar la calidad
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            // Dibujar escudo si está activo
+            if (shieldActive) {
+                ctx.beginPath();
+                ctx.arc(banana.x + banana.width / 2, banana.y + banana.height / 2, 
+                        banana.width / 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(30, 144, 255, 0.3)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(30, 144, 255, 0.7)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+            
+            if (imageLoaded) {
+                ctx.drawImage(bananaImg, banana.x, banana.y, banana.width, banana.height);
+            } else {
+                // Dibujar un rectángulo amarillo como respaldo si la imagen no se carga
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(banana.x, banana.y, banana.width, banana.height);
+            }
+        }
+
+        // Función para actualizar la posición de la banana
+        function updateBanana() {
+            // Aplicar gravedad
+            if (banana.jumping || banana.y < canvas.height - 100) {
+                banana.velocity += banana.gravity;
+                banana.y += banana.velocity;
+            }
+
+            // Limitar la posición al suelo
+            if (banana.y > canvas.height - 100) {
+                banana.y = canvas.height - 100;
+                banana.jumping = false;
+                banana.velocity = 0;
+                canDoubleJump = false;
+            }
+            
+            // Actualizar escudo
+            if (shieldActive) {
+                if (Date.now() - shieldTime > 5000) { // 5 segundos de duración
+                    shieldActive = false;
+                }
+            }
+        }
+
+        // Función para hacer saltar a la banana
+        function jump() {
+            if (!gameOver) {
+                if (!banana.jumping) {
+                    banana.jumping = true;
+                    banana.velocity = -banana.jumpHeight;
+                    canDoubleJump = doubleJumpEnabled;
+                } else if (canDoubleJump) {
+                    banana.velocity = -banana.jumpHeight;
+                    canDoubleJump = false;
+                }
+            }
+        }
+
+        // Función para crear obstáculos
+        function createObstacle() {
+            // Decidir tipo de obstáculo (normal o alto)
+            const isHighObstacle = Math.random() > 0.7;
+            
+            let height, width;
+            
+            if (isHighObstacle) {
+                height = 80 + Math.random() * 40;
+                width = 20 + Math.random() * 10;
+            } else {
+                height = 30 + Math.random() * 50;
+                width = 30 + Math.random() * 20;
+            }
+            
+            const obstacle = {
+                x: canvas.width,
+                y: canvas.height - height,
+                width: width,
+                height: height,
+                type: isHighObstacle ? 'high' : 'normal'
+            };
+            
+            obstacles.push(obstacle);
+        }
+
+        // Función para crear coleccionables
+        function createCollectible() {
+            // Posición Y aleatoria entre 100 y 250 píxeles desde la parte superior
+            const y = 100 + Math.random() * 150;
+            
+            const collectible = {
+                x: canvas.width,
+                y: y,
+                width: 30,
+                height: 15,
+                rotation: Math.random() * 0.5 - 0.25, // Rotación aleatoria para variedad
+                collected: false
+            };
+            
+            collectibles.push(collectible);
+        }
+
+        // Función para crear power-ups
+        function createPowerUp() {
+            // Solo crear power-ups ocasionalmente (20% de probabilidad)
+            if (Math.random() > 0.8) {
+                // Elegir un tipo de power-up aleatorio
+                const powerUpType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                
+                // Posición Y aleatoria entre 100 y 250 píxeles desde la parte superior
+                const y = 100 + Math.random() * 150;
+                
+                const powerUp = {
+                    x: canvas.width,
+                    y: y,
+                    radius: powerUpType.radius,
+                    type: powerUpType.type,
+                    color: powerUpType.color,
+                    collected: false
+                };
+                
+                powerUps.push(powerUp);
+            }
+        }
+
+        // Función para dibujar obstáculos
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                if (obstacle.type === 'high') {
+                    // Obstáculo alto y delgado (cactus)
+                    ctx.fillStyle = '#556B2F'; // Verde oscuro
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    
+                    // Añadir detalles al cactus
+                    ctx.fillStyle = '#7CFC00'; // Verde claro
+                    ctx.fillRect(obstacle.x + obstacle.width / 4, obstacle.y + obstacle.height / 4, 
+                                obstacle.width / 2, obstacle.height / 2);
+                } else {
+                    // Obstáculo normal (roca)
+                    ctx.fillStyle = '#8B4513'; // Marrón
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    
+                    // Añadir detalles a la roca
+                    ctx.fillStyle = '#A0522D'; // Marrón más claro
+                    ctx.fillRect(obstacle.x + obstacle.width / 4, obstacle.y + obstacle.height / 4, 
+                                obstacle.width / 2, obstacle.height / 2);
+                }
+            });
+        }
+
+        // Función para dibujar coleccionables (bananas)
+        function drawCollectibles() {
+            collectibles.forEach(collectible => {
+                if (!collectible.collected) {
+                    // Guardar el estado actual del contexto
+                    ctx.save();
+                    
+                    // Trasladar al centro del plátano
+                    ctx.translate(collectible.x, collectible.y);
+                    
+                    // Rotar ligeramente (para variedad)
+                    ctx.rotate(collectible.rotation);
+                    
+                    // Dibujar el cuerpo del plátano (forma curva)
+                    ctx.fillStyle = '#FFD700'; // Dorado
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, collectible.width / 2, collectible.height, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Añadir sombra para dar volumen
+                    ctx.fillStyle = '#DAA520'; // Dorado oscuro
+                    ctx.beginPath();
+                    ctx.ellipse(2, 2, collectible.width / 2.5, collectible.height / 1.2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Añadir puntas marrones en los extremos
+                    ctx.fillStyle = '#8B4513'; // Marrón
+                    ctx.beginPath();
+                    ctx.arc(collectible.width / 2 - 2, 0, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(-collectible.width / 2 + 2, 0, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Restaurar el estado del contexto
+                    ctx.restore();
+                }
+            });
+        }
+
+        // Función para dibujar power-ups
+        function drawPowerUps() {
+            powerUps.forEach(powerUp => {
+                if (!powerUp.collected) {
+                    // Dibujar el power-up
+                    ctx.beginPath();
+                    ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = powerUp.color;
+                    ctx.fill();
+                    
+                    // Añadir un borde
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Añadir un símbolo según el tipo
+                    ctx.fillStyle = 'white';
+                    ctx.font = '15px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    if (powerUp.type === 'shield') {
+                        ctx.fillText('S', powerUp.x, powerUp.y);
+                    } else if (powerUp.type === 'doubleJump') {
+                        ctx.fillText('2J', powerUp.x, powerUp.y);
+                    }
+                }
+            });
+        }
+
+        // Función para actualizar obstáculos
+        function updateObstacles() {
+            // Mover obstáculos
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].x -= gameSpeed;
+
+                // Eliminar obstáculos fuera de la pantalla
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                    i--;
+                }
+            }
+
+            // Crear nuevos obstáculos
+            const currentTime = Date.now();
+            if (currentTime - lastObstacleTime > obstacleInterval) {
+                createObstacle();
+                lastObstacleTime = currentTime;
+            }
+
+            // Aumentar velocidad con el tiempo
+            if (currentTime - lastSpeedIncreaseTime > speedIncreaseInterval) {
+                gameSpeed += 0.5;
+                obstacleInterval = Math.max(obstacleInterval - 50, 800); // Reducir intervalo pero no menos de 800ms
+                lastSpeedIncreaseTime = currentTime;
+            }
+        }
+
+        // Función para actualizar coleccionables
+        function updateCollectibles() {
+            // Mover coleccionables
+            for (let i = 0; i < collectibles.length; i++) {
+                collectibles[i].x -= gameSpeed;
+
+                // Verificar colisión con la banana
+                if (!collectibles[i].collected && 
+                    banana.x < collectibles[i].x + collectibles[i].width &&
+                    banana.x + banana.width > collectibles[i].x - collectibles[i].width &&
+                    banana.y < collectibles[i].y + collectibles[i].height &&
+                    banana.y + banana.height > collectibles[i].y - collectibles[i].height) {
+                    
+                    collectibles[i].collected = true;
+                    bananasCollected++;
+                    score += 10; // Bonus de puntos
+                }
+
+                // Eliminar coleccionables fuera de la pantalla o recolectados
+                if (collectibles[i].x + collectibles[i].width < 0 || collectibles[i].collected) {
+                    collectibles.splice(i, 1);
+                    i--;
+                }
+            }
+
+            // Crear nuevos coleccionables
+            const currentTime = Date.now();
+            if (currentTime - lastCollectibleTime > collectibleInterval) {
+                createCollectible();
+                lastCollectibleTime = currentTime;
+                
+                // Posibilidad de crear un power-up
+                createPowerUp();
+            }
+        }
+
+        // Función para actualizar power-ups
+        function updatePowerUps() {
+            // Mover power-ups
+            for (let i = 0; i < powerUps.length; i++) {
+                powerUps[i].x -= gameSpeed;
+
+                // Verificar colisión con la banana
+                if (!powerUps[i].collected && 
+                    Math.hypot(
+                        (banana.x + banana.width / 2) - powerUps[i].x,
+                        (banana.y + banana.height / 2) - powerUps[i].y
+                    ) < banana.width / 2 + powerUps[i].radius) {
+                    
+                    powerUps[i].collected = true;
+                    
+                    // Aplicar efecto según el tipo
+                    if (powerUps[i].type === 'shield') {
+                        shieldActive = true;
+                        shieldTime = Date.now();
+                    } else if (powerUps[i].type === 'doubleJump') {
+                        doubleJumpEnabled = true;
+                        
+                        // Desactivar después de 10 segundos
+                        setTimeout(() => {
+                            doubleJumpEnabled = false;
+                        }, 10000);
+                    }
+                }
+
+                // Eliminar power-ups fuera de la pantalla o recolectados
+                if (powerUps[i].x + powerUps[i].radius < 0 || powerUps[i].collected) {
+                    powerUps.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        // Función para dibujar el cielo
+        function drawSky() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height - 20);
+            gradient.addColorStop(0, '#87CEEB'); // Azul claro arriba
+            gradient.addColorStop(1, '#C6E6FB'); // Azul más claro abajo
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height - 20);
+        }
+
+        // Función para dibujar nubes
+        function drawClouds() {
+            ctx.fillStyle = '#FFFFFF';
+            backgroundLayers.clouds.elements.forEach(cloud => {
+                // Dibujar una nube con formas redondeadas
+                ctx.beginPath();
+                ctx.arc(cloud.x, backgroundLayers.clouds.y + 30, cloud.height / 2, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 30, backgroundLayers.clouds.y + 20, cloud.height / 2, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 60, backgroundLayers.clouds.y + 30, cloud.height / 2, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+
+        // Función para dibujar montañas
+        function drawMountains() {
+            // Montañas lejanas
+            ctx.fillStyle = '#6B8E23'; // Verde oliva
+            backgroundLayers.farMountains.elements.forEach(mountain => {
+                ctx.beginPath();
+                ctx.moveTo(mountain.x, canvas.height - 20);
+                ctx.lineTo(mountain.x + mountain.width / 2, canvas.height - 20 - mountain.height);
+                ctx.lineTo(mountain.x + mountain.width, canvas.height - 20);
+                ctx.closePath();
+                ctx.fill();
+            });
+            
+            // Montañas cercanas
+            ctx.fillStyle = '#556B2F'; // Verde oliva oscuro
+            backgroundLayers.nearMountains.elements.forEach(mountain => {
+                ctx.beginPath();
+                ctx.moveTo(mountain.x, canvas.height - 20);
+                ctx.lineTo(mountain.x + mountain.width / 2, canvas.height - 20 - mountain.height);
+                ctx.lineTo(mountain.x + mountain.width, canvas.height - 20);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+
+        // Función para actualizar el fondo
+        function updateBackground() {
+            // Actualizar nubes
+            for (let i = 0; i < backgroundLayers.clouds.elements.length; i++) {
+                backgroundLayers.clouds.elements[i].x -= backgroundLayers.clouds.speed;
+                
+                // Si la nube sale de la pantalla, moverla al final
+                if (backgroundLayers.clouds.elements[i].x + backgroundLayers.clouds.elements[i].width < 0) {
+                    backgroundLayers.clouds.elements[i].x = canvas.width;
+                    backgroundLayers.clouds.elements[i].width = 80 + Math.random() * 120;
+                    backgroundLayers.clouds.elements[i].height = 40 + Math.random() * 30;
+                }
+            }
+            
+            // Actualizar montañas lejanas
+            for (let i = 0; i < backgroundLayers.farMountains.elements.length; i++) {
+                backgroundLayers.farMountains.elements[i].x -= backgroundLayers.farMountains.speed;
+                
+                // Si la montaña sale de la pantalla, moverla al final
+                if (backgroundLayers.farMountains.elements[i].x + backgroundLayers.farMountains.elements[i].width < 0) {
+                    backgroundLayers.farMountains.elements[i].x = canvas.width;
+                    backgroundLayers.farMountains.elements[i].width = 100 + Math.random() * 80;
+                    backgroundLayers.farMountains.elements[i].height = 60 + Math.random() * 40;
+                }
+            }
+            
+            // Actualizar montañas cercanas
+            for (let i = 0; i < backgroundLayers.nearMountains.elements.length; i++) {
+                backgroundLayers.nearMountains.elements[i].x -= backgroundLayers.nearMountains.speed;
+                
+                // Si la montaña sale de la pantalla, moverla al final
+                if (backgroundLayers.nearMountains.elements[i].x + backgroundLayers.nearMountains.elements[i].width < 0) {
+                    backgroundLayers.nearMountains.elements[i].x = canvas.width;
+                    backgroundLayers.nearMountains.elements[i].width = 120 + Math.random() * 100;
+                    backgroundLayers.nearMountains.elements[i].height = 80 + Math.random() * 70;
+                }
+            }
+        }
+
+        // Función para dibujar el suelo
+        function drawGround() {
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+        }
+
+        // Función para dibujar el puntaje y los power-ups activos
+        function drawScore() {
+            ctx.fillStyle = '#000';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Puntaje: ${Math.floor(score)}`, 20, 30);
+            ctx.fillText(`Bananas: ${bananasCollected}`, 20, 60);
+            
+            // Mostrar power-ups activos
+            let powerUpText = '';
+            
+            if (shieldActive) {
+                powerUpText += '🛡️ ';
+            }
+            
+            if (doubleJumpEnabled) {
+                powerUpText += '🦘 ';
+            }
+            
+            if (powerUpText) {
+                ctx.fillText(`Power-ups: ${powerUpText}`, 20, 90);
+            }
+        }
+
+        // Función para detectar colisiones
+        function checkCollisions() {
+            for (let i = 0; i < obstacles.length; i++) {
+                const obstacle = obstacles[i];
+                
+                // Verificar si hay colisión
+                if (
+                    banana.x < obstacle.x + obstacle.width &&
+                    banana.x + banana.width > obstacle.x &&
+                    banana.y < obstacle.y + obstacle.height &&
+                    banana.y + banana.height > obstacle.y
+                ) {
+                    // Si tiene escudo activo, destruir el obstáculo en lugar de terminar el juego
+                    if (shieldActive) {
+                        obstacles.splice(i, 1);
+                        shieldActive = false;
+                        return false;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Función para terminar el juego
+        function endGame() {
+            gameOver = true;
+            cancelAnimationFrame(animationId);
+            finalScoreElement.textContent = Math.floor(score);
+            finalBananasElement.textContent = bananasCollected.toString();
+            gameOverScreen.style.display = 'block';
+            pauseMusic();
+        }
+
+        // Función para reiniciar el juego
+        function restartGame() {
+            gameOver = false;
+            score = 0;
+            bananasCollected = 0;
+            gameSpeed = 5;
+            obstacles.length = 0;
+            collectibles.length = 0;
+            powerUps.length = 0;
+            banana.y = canvas.height - 100;
+            banana.velocity = 0;
+            banana.jumping = false;
+            doubleJumpEnabled = false;
+            canDoubleJump = false;
+            shieldActive = false;
+            lastObstacleTime = Date.now();
+            lastSpeedIncreaseTime = Date.now();
+            lastCollectibleTime = Date.now();
+            obstacleInterval = 1500;
+            collectibleInterval = 1000;
+            
+            // Reiniciar elementos del fondo
+            initBackgroundElements();
+            
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'none';
+            
+            // Iniciar la música al reiniciar el juego
+            playMusic();
+            
+            gameLoop();
+        }
+
+        // Función principal del juego
+        function gameLoop() {
+            // Activar suavizado de imagen para mejorar la calidad
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Activar suavizado de imagen para mejorar la calidad
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            // Dibujar y actualizar fondo
+            drawSky();
+            drawClouds();
+            drawMountains();
+            updateBackground();
+            
+            // Actualizar posiciones
+            updateBanana();
+            updateObstacles();
+            updateCollectibles();
+            updatePowerUps();
+            
+            // Verificar colisiones
+            if (checkCollisions()) {
+                endGame();
+                return;
+            }
+            
+            // Dibujar elementos
+            drawGround();
+            drawCollectibles();
+            drawPowerUps();
+            drawObstacles();
+            drawBanana();
+            drawScore();
+            
+            // Actualizar puntaje
+            score += 0.1;
+            
+            // Continuar el bucle
+            if (!gameOver) {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Manejar eventos táctiles para dispositivos móviles
+        function handleTouchEvents() {
+            // Prevenir el comportamiento de zoom y scroll en dispositivos táctiles
+            document.addEventListener('touchmove', function(e) {
+                if (e.target === canvas) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            // Evento de toque para saltar
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                jump();
+            }, { passive: false });
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                jump();
+            }
+        });
+
+        canvas.addEventListener('click', jump);
+        restartButton.addEventListener('click', restartGame);
+        
+        // Asegurarse de que el botón de inicio funcione correctamente y reproduzca la música
+        startButton.addEventListener('click', function() {
+            // Detener cualquier reproducción actual y reiniciar
+            gameMusic.pause();
+            gameMusic.currentTime = 0;
+            
+            // Intentar reproducir la música primero (para manejar la interacción del usuario)
+            gameMusic.play().then(() => {
+                showAudioStatus("🎵 Música iniciada desde el principio");
+                restartGame();
+            }).catch(error => {
+                showAudioStatus("❌ Error de audio: " + error.message);
+                // Continuar con el juego de todos modos
+                restartGame();
+            });
+        });
+        
+        // Añadir evento para el botón de silenciar
+        muteButton.addEventListener('click', toggleMute);
+
+        // Manejar la carga de la imagen
+        bananaImg.onload = function() {
+            imageLoaded = true;
+            // Inicializar elementos del fondo
+            initBackgroundElements();
+            
+            // Dibujar el fondo inicial
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawSky();
+            drawClouds();
+            drawMountains();
+            drawGround();
+            drawBanana();
+        };
+        
+        // Manejar errores de carga de imagen
+        bananaImg.onerror = function() {
+            console.error("Error al cargar la imagen de la banana");
+            imageLoaded = false;
+            
+            // Inicializar el juego de todos modos
+            initBackgroundElements();
+            
+            // Dibujar el fondo inicial
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawSky();
+            drawClouds();
+            drawMountains();
+            drawGround();
+            drawBanana();
+        };
+        
+        // Inicializar el juego incluso si la imagen no se carga después de un tiempo
+        setTimeout(function() {
+            if (!imageLoaded) {
+                console.warn("La imagen no se cargó a tiempo, iniciando con respaldo");
+                initBackgroundElements();
+                
+                // Dibujar el fondo inicial
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawSky();
+                drawClouds();
+                drawMountains();
+                drawGround();
+                drawBanana();
+            }
+        }, 2000);
+        
+        // Manejar eventos de audio
+        gameMusic.addEventListener('canplaythrough', function() {
+            audioLoaded = true;
+            showAudioStatus("✅ Audio cargado correctamente");
+        });
+
+        gameMusic.addEventListener('error', function(e) {
+            audioLoaded = false;
+            showAudioStatus("❌ Error al cargar el audio: " + e.message);
+            console.error("Error de audio:", e);
+        });
+
+        // Asegurarse de que la música se repita cuando termine
+        gameMusic.addEventListener('ended', function() {
+            if (!gameOver && !isMuted) {
+                gameMusic.currentTime = 0;
+                gameMusic.play().then(() => {
+                    showAudioStatus("🔄 Música reiniciada");
+                }).catch(e => {
+                    showAudioStatus("❌ Error al reiniciar música: " + e.message);
+                });
+            }
+        });
+
+        // Asegurarse de que el atributo loop esté establecido
+        gameMusic.loop = true;
+        
+        // Precargar la música
+        gameMusic.load();
+        
+        // Inicializar el juego
+        function init() {
+            // Ajustar el tamaño del canvas
+            resizeCanvas();
+            
+            // Configurar eventos táctiles para móviles
+            handleTouchEvents();
+            
+            // Inicializar elementos del fondo
+            initBackgroundElements();
+            
+            // Dibujar el fondo inicial
+            drawSky();
+            drawClouds();
+            drawMountains();
+            drawGround();
+        }
+        
+        // Manejar cambios de tamaño de ventana
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Iniciar el juego
+        init();
+    </script>
+</body>
+</html>

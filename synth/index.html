@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Miguelo Synth</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="synth-container">
+        <div id="start-overlay">
+            <h1>MIGUELO SYNTH</h1>
+            <p>Haz clic para iniciar el sintetizador</p>
+            <button id="start-button">INICIAR</button>
+        </div>
+        
+        <header>
+            <div class="logo-container">
+                <img id="miguelo-logo" src="./images/miguelo-inactive.png" alt="Miguelo Logo">
+                <h1>MIGUELO SYNTH</h1>
+            </div>
+            <button id="theme-button">MODO OSCURO</button>
+        </header>
+        
+        <div class="controls-container">
+            <div class="control-group">
+                <label for="waveform">FORMA DE ONDA</label>
+                <select id="waveform">
+                    <option value="sine">Senoidal</option>
+                    <option value="square">Cuadrada</option>
+                    <option value="sawtooth">Sierra</option>
+                    <option value="triangle">Triangular</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="frequency">FRECUENCIA</label>
+                <input type="range" id="frequency" min="20" max="2000" step="1" value="440">
+                <span id="frequency-value">440 Hz</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="filter">FILTRO</label>
+                <input type="range" id="filter" min="20" max="20000" step="1" value="20000">
+                <span id="filter-value">20000 Hz</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="distortion">DISTORSIÓN</label>
+                <input type="range" id="distortion" min="0" max="100" step="1" value="0">
+                <span id="distortion-value">0%</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="delay">DELAY</label>
+                <input type="range" id="delay" min="0" max="1" step="0.01" value="0">
+                <span id="delay-value">0s</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="lfo-freq">LFO FRECUENCIA</label>
+                <input type="range" id="lfo-freq" min="0" max="20" step="0.1" value="0">
+                <span id="lfo-freq-value">0 Hz</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="lfo-depth">LFO PROFUNDIDAD</label>
+                <input type="range" id="lfo-depth" min="0" max="100" step="1" value="0">
+                <span id="lfo-depth-value">0%</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="volume">VOLUMEN</label>
+                <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+                <span id="volume-value">50%</span>
+            </div>
+        </div>
+        
+        <!-- Sección del Arpegiador -->
+        <div class="arpeggiator-container">
+            <h2>ARPEGIADOR</h2>
+            <div class="arpeggiator-controls">
+                <div class="arp-control-group">
+                    <button id="arp-toggle" class="arp-button">ARPEGIADOR: OFF</button>
+                </div>
+                <div class="arp-control-group">
+                    <label for="arp-rate">VELOCIDAD</label>
+                    <input type="range" id="arp-rate" min="50" max="500" step="10" value="200">
+                    <span id="arp-rate-value">200 ms</span>
+                </div>
+                <div class="arp-control-group">
+                    <label for="arp-pattern">PATRÓN</label>
+                    <select id="arp-pattern">
+                        <option value="up">Ascendente</option>
+                        <option value="down">Descendente</option>
+                        <option value="updown">Arriba/Abajo</option>
+                        <option value="random">Aleatorio</option>
+                    </select>
+                </div>
+                <div class="arp-control-group">
+                    <label for="arp-octave">RANGO DE OCTAVAS</label>
+                    <select id="arp-octave">
+                        <option value="1">1 Octava</option>
+                        <option value="2">2 Octavas</option>
+                        <option value="3">3 Octavas</option>
+                    </select>
+                </div>
+                <div class="arp-notes-display" id="arp-notes-display">
+                    No hay notas activas
+                </div>
+            </div>
+        </div>
+        
+        <div class="presets-container">
+            <h2>PRESETS</h2>
+            <div class="preset-buttons">
+                <button class="preset-btn" data-preset="espacio-glitch">ESPACIO GLITCH</button>
+                <button class="preset-btn" data-preset="robot-malvado">ROBOT MALVADO</button>
+                <button class="preset-btn" data-preset="eco-alienigena">ECO ALIENÍGENA</button>
+                <button class="preset-btn" data-preset="laser-funky">LÁSER FUNKY</button>
+                <button class="preset-btn" data-preset="ruido-caotico">RUIDO CAÓTICO</button>
+            </div>
+        </div>
+        
+        <!-- Nuevo teclado táctil -->
+        <div class="keyboard-container">
+            <div id="touch-keyboard">
+                <div class="piano-row">
+                    <button type="button" class="piano-key white-key" data-note="C4">C</button>
+                    <button type="button" class="piano-key black-key" data-note="C#4">C#</button>
+                    <button type="button" class="piano-key white-key" data-note="D4">D</button>
+                    <button type="button" class="piano-key black-key" data-note="D#4">D#</button>
+                    <button type="button" class="piano-key white-key" data-note="E4">E</button>
+                    <button type="button" class="piano-key white-key" data-note="F4">F</button>
+                    <button type="button" class="piano-key black-key" data-note="F#4">F#</button>
+                    <button type="button" class="piano-key white-key" data-note="G4">G</button>
+                    <button type="button" class="piano-key black-key" data-note="G#4">G#</button>
+                    <button type="button" class="piano-key white-key" data-note="A4">A</button>
+                    <button type="button" class="piano-key black-key" data-note="A#4">A#</button>
+                    <button type="button" class="piano-key white-key" data-note="B4">B</button>
+                    <button type="button" class="piano-key white-key" data-note="C5">C</button>
+                </div>
+            </div>
+            <div class="octave-display">
+                <span id="current-octave">Octava: 4</span>
+                <div class="octave-buttons">
+                    <button id="octave-down" class="octave-btn">▼</button>
+                    <button id="octave-up" class="octave-btn">▲</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="debug-container">
+            <h3>DEBUG</h3>
+            <div id="debug"></div>
+        </div>
+        
+        <footer class="footer">
+            <p>Powered by <a href="https://www.trafulmusic.com" target="_blank">Traful</a></p>
+        </footer>
+    </div>
+    
+    <script src="tone.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
