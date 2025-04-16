@@ -123,23 +123,31 @@
             </div>
         </div>
         
-        <!-- Nuevo teclado táctil -->
+        <!-- Añadir el contenedor del visualizador justo antes del div.keyboard-container -->
+        <div class="visualizer-container">
+            <h2>VISUALIZADOR</h2>
+            <canvas id="waveform-visualizer"></canvas>
+        </div>
+        
         <div class="keyboard-container">
             <div id="touch-keyboard">
                 <div class="piano-row">
+                    <!-- Teclas blancas -->
                     <button type="button" class="piano-key white-key" data-note="C4">C</button>
-                    <button type="button" class="piano-key black-key" data-note="C#4">C#</button>
                     <button type="button" class="piano-key white-key" data-note="D4">D</button>
-                    <button type="button" class="piano-key black-key" data-note="D#4">D#</button>
                     <button type="button" class="piano-key white-key" data-note="E4">E</button>
                     <button type="button" class="piano-key white-key" data-note="F4">F</button>
-                    <button type="button" class="piano-key black-key" data-note="F#4">F#</button>
                     <button type="button" class="piano-key white-key" data-note="G4">G</button>
-                    <button type="button" class="piano-key black-key" data-note="G#4">G#</button>
                     <button type="button" class="piano-key white-key" data-note="A4">A</button>
-                    <button type="button" class="piano-key black-key" data-note="A#4">A#</button>
                     <button type="button" class="piano-key white-key" data-note="B4">B</button>
                     <button type="button" class="piano-key white-key" data-note="C5">C</button>
+                    
+                    <!-- Teclas negras -->
+                    <button type="button" class="piano-key black-key" data-note="C#4">C#</button>
+                    <button type="button" class="piano-key black-key" data-note="D#4">D#</button>
+                    <button type="button" class="piano-key black-key" data-note="F#4">F#</button>
+                    <button type="button" class="piano-key black-key" data-note="G#4">G#</button>
+                    <button type="button" class="piano-key black-key" data-note="A#4">A#</button>
                 </div>
             </div>
             <div class="octave-display">

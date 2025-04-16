@@ -65,6 +65,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let feedbackNode = null
   let lfoNode = null
   let lfoGainNode = null
+  let analyserNode = null
+  let visualizerCanvas = null
+  let visualizerContext = null
+  let animationFrameId = null
   let isPlaying = false
 
   // Configuración actual
@@ -222,6 +226,14 @@ document.addEventListener("DOMContentLoaded", () => {
       lfoGainNode.connect(filterNode.frequency)
       lfoNode.start()
 
+      // Crear nodo analizador para el visualizador
+      analyserNode = audioContext.createAnalyser()
+      analyserNode.fftSize = 2048
+      gainNode.connect(analyserNode)
+
+      // Inicializar el visualizador
+      initVisualizer()
+
       debug("Sintetizador inicializado correctamente")
 
       // Ocultar el overlay de inicio
@@ -254,6 +266,84 @@ document.addEventListener("DOMContentLoaded", () => {
       debug("Error al inicializar el sintetizador: " + error.message)
       alert("Error al inicializar el sintetizador. Por favor, recarga la página.")
     }
+  }
+
+  // Inicializar el visualizador de forma de onda
+  function initVisualizer() {
+    visualizerCanvas = document.getElementById("waveform-visualizer")
+    if (!visualizerCanvas) {
+      debug("Error: No se encontró el canvas del visualizador")
+      return
+    }
+
+    visualizerContext = visualizerCanvas.getContext("2d")
+
+    // Ajustar el tamaño del canvas para que coincida con su tamaño en pantalla
+    const rect = visualizerCanvas.getBoundingClientRect()
+    visualizerCanvas.width = rect.width
+    visualizerCanvas.height = rect.height
+
+    // Iniciar la animación
+    drawWaveform()
+
+    debug("Visualizador inicializado correctamente")
+  }
+
+  // Dibujar la forma de onda
+  function drawWaveform() {
+    if (!analyserNode || !visualizerContext || !visualizerCanvas) return
+
+    // Cancelar cualquier frame de animación anterior
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId)
+    }
+
+    // Crear un array para almacenar los datos de la forma de onda
+    const bufferLength = analyserNode.frequencyBinCount
+    const dataArray = new Uint8Array(bufferLength)
+
+    // Función de animación
+    function animate() {
+      animationFrameId = requestAnimationFrame(animate)
+
+      // Obtener los datos de la forma de onda
+      analyserNode.getByteTimeDomainData(dataArray)
+
+      // Limpiar el canvas
+      visualizerContext.fillStyle = document.body.classList.contains("dark-theme")
+        ? "rgba(0, 0, 0, 0.2)"
+        : "rgba(255, 255, 255, 0.2)"
+      visualizerContext.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height)
+
+      // Configurar el estilo de la línea
+      visualizerContext.lineWidth = 2
+      visualizerContext.strokeStyle = isPlaying ? "#ffcc00" : "#999"
+
+      // Dibujar la forma de onda
+      visualizerContext.beginPath()
+
+      const sliceWidth = visualizerCanvas.width / bufferLength
+      let x = 0
+
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0 // Convertir a un rango de 0-2
+        const y = (v * visualizerCanvas.height) / 2
+
+        if (i === 0) {
+          visualizerContext.moveTo(x, y)
+        } else {
+          visualizerContext.lineTo(x, y)
+        }
+
+        x += sliceWidth
+      }
+
+      visualizerContext.lineTo(visualizerCanvas.width, visualizerCanvas.height / 2)
+      visualizerContext.stroke()
+    }
+
+    // Iniciar la animación
+    animate()
   }
 
   // Configurar el arpegiador
@@ -495,12 +585,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // Actualizar las notas del teclado según la octava actual
   function updateKeyboardNotes() {
     const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "C"]
-    const keyElements = document.querySelectorAll(".piano-key")
+    const whiteKeys = document.querySelectorAll(".white-key")
+    const blackKeys = document.querySelectorAll(".black-key")
 
-    // Actualizar las notas de las teclas
-    keyElements.forEach((key, index) => {
-      if (index < noteNames.length) {
-        const newNote = noteNames[index] + (index === noteNames.length - 1 ? currentOctave + 1 : currentOctave)
+    // Actualizar las notas de las teclas blancas
+    const whiteNoteNames = ["C", "D", "E", "F", "G", "A", "B", "C"]
+    whiteKeys.forEach((key, index) => {
+      if (index < whiteNoteNames.length) {
+        const octaveToUse = index === whiteNoteNames.length - 1 ? currentOctave + 1 : currentOctave
+        const newNote = whiteNoteNames[index] + octaveToUse
+        key.dataset.note = newNote
+      }
+    })
+
+    // Actualizar las notas de las teclas negras
+    const blackNoteNames = ["C#", "D#", "F#", "G#", "A#"]
+    blackKeys.forEach((key, index) => {
+      if (index < blackNoteNames.length) {
+        const newNote = blackNoteNames[index] + currentOctave
         key.dataset.note = newNote
       }
     })
@@ -986,6 +1088,15 @@ document.addEventListener("DOMContentLoaded", () => {
     themeButton.addEventListener("click", function () {
       document.body.classList.toggle("dark-theme")
       this.textContent = document.body.classList.contains("dark-theme") ? "MODO CLARO" : "MODO OSCURO"
+    })
+
+    // Redimensionar el visualizador cuando cambia el tamaño de la ventana
+    window.addEventListener("resize", () => {
+      if (visualizerCanvas) {
+        const rect = visualizerCanvas.getBoundingClientRect()
+        visualizerCanvas.width = rect.width
+        visualizerCanvas.height = rect.height
+      }
     })
 
     debug("Controles configurados correctamente")
