@@ -2,25 +2,62 @@
 function debug(message) {
   console.log(message)
   const debugElement = document.getElementById("debug")
-  debugElement.innerHTML += message + "<br>"
+  if (debugElement) {
+    debugElement.innerHTML += message + "<br>"
+  }
 }
 
 // Esperar a que el DOM esté completamente cargado
 document.addEventListener("DOMContentLoaded", () => {
   debug("DOM cargado")
 
+  // Variables globales
+  let audioContext = null
+  let masterGainNode = null
+  const activeOscillators = {}
+  const activeGainNodes = {}
+  let filterNode = null
+  let delayNode = null
+  let feedbackNode = null
+  let lfoNode = null
+  let lfoGainNode = null
+  let analyserNode = null
+  let visualizerCanvas = null
+  let visualizerContext = null
+  let animationFrameId = null
+  let isAudioInitialized = false
+  let currentOctave = 3
+  let manualFrequencyMode = false
+  let currentLanguage = "en"
+
+  // Variables del arpegiador - Reimplementación completa
+  let arpeggiatorEnabled = false
+  let arpeggiatorNotes = []
+  let arpeggiatorTimer = null
+  let arpeggiatorIndex = 0
+  let arpeggiatorRate = 200
+  let arpeggiatorPattern = "up"
+  let arpeggiatorOctaveRange = 1
+  let arpeggiatorDirection = 1
+  let arpeggiatorOctaveOffset = 0
+
+  const pressedKeys = new Set()
+
   // Elementos del DOM
   const startOverlay = document.getElementById("start-overlay")
   const startButton = document.getElementById("start-button")
+  const startText = document.getElementById("start-text")
   const migueloLogo = document.getElementById("miguelo-logo")
   const themeButton = document.getElementById("theme-button")
+  const languageButton = document.getElementById("language-button")
   const waveformSelect = document.getElementById("waveform")
   const frequencySlider = document.getElementById("frequency")
   const frequencyValue = document.getElementById("frequency-value")
+  const frequencyModeToggle = document.getElementById("frequency-mode-toggle")
   const filterSlider = document.getElementById("filter")
   const filterValue = document.getElementById("filter-value")
-  const distortionSlider = document.getElementById("distortion")
-  const distortionValue = document.getElementById("distortion-value")
+  const attackSlider = document.getElementById("distortion") // Reutilizamos el slider de distorsión
+  const attackValue = document.getElementById("distortion-value") // Reutilizamos el valor de distorsión
   const delaySlider = document.getElementById("delay")
   const delayValue = document.getElementById("delay-value")
   const lfoFreqSlider = document.getElementById("lfo-freq")
@@ -30,84 +67,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const volumeSlider = document.getElementById("volume")
   const volumeValue = document.getElementById("volume-value")
   const presetButtons = document.querySelectorAll(".preset-btn")
-
-  // Elementos del nuevo teclado táctil
   const pianoKeys = document.querySelectorAll(".piano-key")
   const octaveUpBtn = document.getElementById("octave-up")
   const octaveDownBtn = document.getElementById("octave-down")
   const currentOctaveDisplay = document.getElementById("current-octave")
-
-  // Elementos del arpegiador
   const arpToggleButton = document.getElementById("arp-toggle")
   const arpRateSlider = document.getElementById("arp-rate")
   const arpRateValue = document.getElementById("arp-rate-value")
   const arpPatternSelect = document.getElementById("arp-pattern")
   const arpOctaveSelect = document.getElementById("arp-octave")
   const arpNotesDisplay = document.getElementById("arp-notes-display")
-
-  // Ocultar el botón de guardar preset si existe
-  const savePresetButton = document.getElementById("save-preset-btn")
-  if (savePresetButton) {
-    savePresetButton.style.display = "none"
-  }
+  const stopButton = document.getElementById("stop-button")
 
   // Imágenes de Miguelo con rutas locales
   const migueloInactive = "./images/miguelo-inactive.png"
   const migueloActive = "./images/miguelo-active.png"
-
-  // Variables para Web Audio API
-  let audioContext = null
-  let oscillator = null
-  let gainNode = null
-  let filterNode = null
-  let distortionNode = null
-  let delayNode = null
-  let feedbackNode = null
-  let lfoNode = null
-  let lfoGainNode = null
-  let analyserNode = null
-  let visualizerCanvas = null
-  let visualizerContext = null
-  let animationFrameId = null
-  let isPlaying = false
 
   // Configuración actual
   let currentSettings = {
     waveform: "sine",
     frequency: 440,
     filter: 20000,
-    distortion: 0,
+    attack: 0,
     delay: 0,
     lfoFreq: 0,
     lfoDepth: 0,
     volume: 0.5,
   }
 
-  // Modo de frecuencia manual (usar la frecuencia del control en lugar de la nota)
-  let manualFrequencyMode = false
-
-  // Variable para la octava actual (4 es la octava por defecto)
-  let currentOctave = 4
-
-  // Variables para el arpegiador
-  let arpeggiatorEnabled = false
-  let arpeggiatorRate = 200 // ms entre notas
-  let arpeggiatorPattern = "up" // up, down, updown, random
-  let arpeggiatorOctaveRange = 1 // Número de octavas que abarca el arpegiador
-  const arpeggiatorNotes = [] // notas actualmente presionadas
-  let arpeggiatorIndex = 0 // índice actual en el arpegio
-  let arpeggiatorTimer = null // temporizador para el arpegiador
-  let arpeggiatorDirection = 1 // Dirección del arpegiador (1 = arriba, -1 = abajo)
-  let arpeggiatorOctaveOffset = 0 // Desplazamiento de octava actual
-
-  // Presets
+  // Presets - Modificados para tener delay en 0
   const presets = {
     "espacio-glitch": {
       waveform: "square",
       frequency: 220,
       filter: 2000,
-      distortion: 30,
-      delay: 0,
+      attack: 0,
+      delay: 0, // Cambiado de 0.3 a 0
       lfoFreq: 5.5,
       lfoDepth: 70,
       volume: 0.4,
@@ -116,8 +111,8 @@ document.addEventListener("DOMContentLoaded", () => {
       waveform: "sawtooth",
       frequency: 110,
       filter: 800,
-      distortion: 80,
-      delay: 0,
+      attack: 0,
+      delay: 0, // Cambiado de 0.2 a 0
       lfoFreq: 8,
       lfoDepth: 40,
       volume: 0.6,
@@ -126,8 +121,8 @@ document.addEventListener("DOMContentLoaded", () => {
       waveform: "sine",
       frequency: 440,
       filter: 5000,
-      distortion: 10,
-      delay: 0,
+      attack: 0,
+      delay: 0, // Cambiado de 0.5 a 0
       lfoFreq: 0.2,
       lfoDepth: 90,
       volume: 0.5,
@@ -136,8 +131,8 @@ document.addEventListener("DOMContentLoaded", () => {
       waveform: "sawtooth",
       frequency: 880,
       filter: 3000,
-      distortion: 20,
-      delay: 0,
+      attack: 0,
+      delay: 0, // Cambiado de 0.1 a 0
       lfoFreq: 2,
       lfoDepth: 60,
       volume: 0.45,
@@ -146,12 +141,218 @@ document.addEventListener("DOMContentLoaded", () => {
       waveform: "square",
       frequency: 55,
       filter: 10000,
-      distortion: 90,
-      delay: 0,
+      attack: 0,
+      delay: 0, // Cambiado de 0.4 a 0
       lfoFreq: 15,
       lfoDepth: 100,
       volume: 0.35,
     },
+  }
+
+  // Traducciones
+  const translations = {
+    es: {
+      startText: "Haz clic para iniciar el sintetizador",
+      startButton: "INICIAR",
+      themeButton: {
+        light: "MODO OSCURO",
+        dark: "MODO CLARO",
+      },
+      waveformLabel: "FORMA DE ONDA",
+      waveformOptions: {
+        sine: "Senoidal",
+        square: "Cuadrada",
+        sawtooth: "Sierra",
+        triangle: "Triangular",
+      },
+      frequencyLabel: "FRECUENCIA",
+      frequencyMode: {
+        notes: "MODO: NOTAS MUSICALES",
+        manual: "MODO: FRECUENCIA MANUAL",
+      },
+      filterLabel: "FILTRO",
+      attackLabel: "ATAQUE",
+      delayLabel: "DELAY",
+      volumeLabel: "VOLUMEN",
+      lfoFreqLabel: "FRECUENCIA",
+      lfoDepthLabel: "PROFUNDIDAD",
+      arpeggiatorTitle: "ARPEGIADOR",
+      arpToggle: {
+        on: "ARPEGIADOR: ON",
+        off: "ARPEGIADOR: OFF",
+      },
+      arpRateLabel: "VELOCIDAD",
+      arpPatternLabel: "PATRÓN",
+      arpPatternOptions: {
+        up: "Ascendente",
+        down: "Descendente",
+        updown: "Arriba/Abajo",
+        random: "Aleatorio",
+      },
+      arpOctaveLabel: "RANGO DE OCTAVAS",
+      arpOctaveOptions: {
+        one: "1 Octava",
+        two: "2 Octavas",
+        three: "3 Octavas",
+      },
+      arpNotesDisplay: "No hay notas activas",
+      presetsTitle: "PRESETS",
+      presetButtons: {
+        space: "ESPACIO GLITCH",
+        robot: "ROBOT MALVADO",
+        alien: "ECO ALIENÍGENA",
+        laser: "LÁSER FUNKY",
+        noise: "RUIDO CAÓTICO",
+      },
+      visualizerTitle: "VISUALIZADOR",
+      octaveDisplay: "Octava: ",
+      footerText: "Powered by <a href='https://www.trafulmusic.com' target='_blank'>Traful</a>",
+    },
+    en: {
+      startText: "Click to start the synthesizer",
+      startButton: "START",
+      themeButton: {
+        light: "DARK MODE",
+        dark: "LIGHT MODE",
+      },
+      waveformLabel: "WAVEFORM",
+      waveformOptions: {
+        sine: "Sine",
+        square: "Square",
+        sawtooth: "Sawtooth",
+        triangle: "Triangle",
+      },
+      frequencyLabel: "FREQUENCY",
+      frequencyMode: {
+        notes: "MODE: MUSICAL NOTES",
+        manual: "MODE: MANUAL FREQUENCY",
+      },
+      filterLabel: "FILTER",
+      attackLabel: "ATTACK",
+      delayLabel: "DELAY",
+      volumeLabel: "VOLUME",
+      lfoFreqLabel: "FREQUENCY",
+      lfoDepthLabel: "DEPTH",
+      arpeggiatorTitle: "ARPEGGIATOR",
+      arpToggle: {
+        on: "ARPEGIADOR: ON",
+        off: "ARPEGIADOR: OFF",
+      },
+      arpRateLabel: "SPEED",
+      arpPatternLabel: "PATTERN",
+      arpPatternOptions: {
+        up: "Ascending",
+        down: "Descending",
+        updown: "Up/Down",
+        random: "Random",
+      },
+      arpOctaveLabel: "OCTAVE RANGE",
+      arpOctaveOptions: {
+        one: "1 Octave",
+        two: "2 Octaves",
+        three: "3 Octaves",
+      },
+      arpNotesDisplay: "No active notes",
+      presetsTitle: "PRESETS",
+      presetButtons: {
+        space: "SPACE GLITCH",
+        robot: "EVIL ROBOT",
+        alien: "ALIEN ECHO",
+        laser: "FUNKY LASER",
+        noise: "CHAOTIC NOISE",
+      },
+      visualizerTitle: "VISUALIZER",
+      octaveDisplay: "Octave: ",
+      footerText: "Powered by <a href='https://www.trafulmusic.com' target='_blank'>Traful</a>",
+    },
+  }
+
+  // Función para cambiar el idioma
+  function changeLanguage(lang) {
+    if (lang !== "es" && lang !== "en") return
+
+    currentLanguage = lang
+    languageButton.textContent = lang === "en" ? "ES" : "EN"
+    updateUITexts()
+
+    try {
+      localStorage.setItem("migueloSynthLanguage", lang)
+    } catch (e) {
+      debug("Error al guardar preferencia de idioma: " + e.message)
+    }
+  }
+
+  // Función para actualizar los textos de la interfaz
+  function updateUITexts() {
+    const texts = translations[currentLanguage]
+
+    // Pantalla de inicio
+    startText.textContent = texts.startText
+    startButton.textContent = texts.startButton
+
+    // Tema
+    themeButton.textContent = document.body.classList.contains("dark-theme")
+      ? texts.themeButton.dark
+      : texts.themeButton.light
+
+    // Actualizar el botón de idioma para mostrar el idioma al que cambiará
+    languageButton.textContent = currentLanguage === "en" ? "ES" : "EN"
+
+    // Controles principales
+    document.getElementById("waveform-label").textContent = texts.waveformLabel
+    document.getElementById("sine-option").textContent = texts.waveformOptions.sine
+    document.getElementById("square-option").textContent = texts.waveformOptions.square
+    document.getElementById("sawtooth-option").textContent = texts.waveformOptions.sawtooth
+    document.getElementById("triangle-option").textContent = texts.waveformOptions.triangle
+
+    document.getElementById("frequency-label").textContent = texts.frequencyLabel
+    frequencyModeToggle.textContent = manualFrequencyMode ? texts.frequencyMode.manual : texts.frequencyMode.notes
+
+    document.getElementById("filter-label").textContent = texts.filterLabel
+    document.getElementById("distortion-label").textContent = texts.attackLabel
+    document.getElementById("delay-label").textContent = texts.delayLabel
+    document.getElementById("volume-label").textContent = texts.volumeLabel
+
+    // LFO
+    document.getElementById("lfo-freq-label").textContent = texts.lfoFreqLabel
+    document.getElementById("lfo-depth-label").textContent = texts.lfoDepthLabel
+
+    // Arpegiador
+    document.getElementById("arpeggiator-title").textContent = texts.arpeggiatorTitle
+    arpToggleButton.textContent = arpeggiatorEnabled ? texts.arpToggle.on : texts.arpToggle.off
+
+    document.getElementById("arp-rate-label").textContent = texts.arpRateLabel
+    document.getElementById("arp-pattern-label").textContent = texts.arpPatternLabel
+    document.getElementById("up-option").textContent = texts.arpPatternOptions.up
+    document.getElementById("down-option").textContent = texts.arpPatternOptions.down
+    document.getElementById("updown-option").textContent = texts.arpPatternOptions.updown
+    document.getElementById("random-option").textContent = texts.arpPatternOptions.random
+
+    document.getElementById("arp-octave-label").textContent = texts.arpOctaveLabel
+    document.getElementById("octave1-option").textContent = texts.arpOctaveOptions.one
+    document.getElementById("octave2-option").textContent = texts.arpOctaveOptions.two
+    document.getElementById("octave3-option").textContent = texts.arpOctaveOptions.three
+
+    if (arpeggiatorNotes.length === 0) {
+      arpNotesDisplay.textContent = texts.arpNotesDisplay
+    }
+
+    // Presets
+    document.getElementById("presets-title").textContent = texts.presetsTitle
+    document.getElementById("preset-space").textContent = texts.presetButtons.space
+    document.getElementById("preset-robot").textContent = texts.presetButtons.robot
+    document.getElementById("preset-alien").textContent = texts.presetButtons.alien
+    document.getElementById("preset-laser").textContent = texts.presetButtons.laser
+    document.getElementById("preset-noise").textContent = texts.presetButtons.noise
+
+    // Visualizador
+    document.getElementById("visualizer-title").textContent = texts.visualizerTitle
+
+    // Octava
+    currentOctaveDisplay.textContent = texts.octaveDisplay + currentOctave
+
+    // Footer
+    document.getElementById("footer-text").innerHTML = texts.footerText
   }
 
   // Función para convertir notas a frecuencias
@@ -168,60 +369,45 @@ document.addEventListener("DOMContentLoaded", () => {
     return 440 * Math.pow(2, semitoneFromA4 / 12)
   }
 
-  // Función para crear una curva de distorsión
-  function createDistortionCurve(amount) {
-    if (amount <= 0) return null
-
-    const samples = 44100
-    const curve = new Float32Array(samples)
-    const deg = Math.PI / 180
-    const distortionAmount = (amount / 100) * 50 // Ajustar el rango
-
-    for (let i = 0; i < samples; ++i) {
-      const x = (i * 2) / samples - 1
-      curve[i] = ((3 + distortionAmount) * x * 20 * deg) / (Math.PI + distortionAmount * Math.abs(x))
-    }
-
-    return curve
-  }
-
-  // Inicializar el sintetizador
-  function initSynth() {
-    debug("Iniciando sintetizador...")
+  // Inicializar el contexto de audio y los nodos
+  function initAudio() {
+    if (isAudioInitialized) return
 
     try {
       // Crear contexto de audio
       audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      debug("Contexto de audio creado correctamente")
 
-      // Crear nodos de audio
-      gainNode = audioContext.createGain()
-      gainNode.gain.value = currentSettings.volume
-      gainNode.connect(audioContext.destination)
+      // Crear nodo de ganancia principal
+      masterGainNode = audioContext.createGain()
+      masterGainNode.gain.value = currentSettings.volume
+      masterGainNode.connect(audioContext.destination)
 
+      // Crear nodo de filtro
       filterNode = audioContext.createBiquadFilter()
       filterNode.type = "lowpass"
       filterNode.frequency.value = currentSettings.filter
-      filterNode.connect(gainNode)
+      filterNode.connect(masterGainNode)
 
-      distortionNode = audioContext.createWaveShaper()
-      distortionNode.curve = createDistortionCurve(currentSettings.distortion)
-      distortionNode.connect(filterNode)
-
+      // Crear nodo de delay
       delayNode = audioContext.createDelay(5.0)
       delayNode.delayTime.value = currentSettings.delay
-      delayNode.connect(distortionNode)
 
+      // Crear nodo de feedback para el delay
       feedbackNode = audioContext.createGain()
-      feedbackNode.gain.value = currentSettings.delay * 0.5
+      feedbackNode.gain.value = 0.3
+
+      // Conectar la cadena de delay
       delayNode.connect(feedbackNode)
       feedbackNode.connect(delayNode)
+      delayNode.connect(filterNode)
 
+      // Crear nodo LFO
       lfoNode = audioContext.createOscillator()
       lfoNode.frequency.value = currentSettings.lfoFreq
 
       lfoGainNode = audioContext.createGain()
       lfoGainNode.gain.value = (currentSettings.lfoDepth / 100) * 5000
+
       lfoNode.connect(lfoGainNode)
       lfoGainNode.connect(filterNode.frequency)
       lfoNode.start()
@@ -229,46 +415,52 @@ document.addEventListener("DOMContentLoaded", () => {
       // Crear nodo analizador para el visualizador
       analyserNode = audioContext.createAnalyser()
       analyserNode.fftSize = 2048
-      gainNode.connect(analyserNode)
+      masterGainNode.connect(analyserNode)
 
-      // Inicializar el visualizador
-      initVisualizer()
+      isAudioInitialized = true
+      debug("Audio inicializado correctamente")
 
-      debug("Sintetizador inicializado correctamente")
-
-      // Ocultar el overlay de inicio
-      startOverlay.style.display = "none"
-
-      // Actualizar controles con valores iniciales
-      updateControlsFromSettings()
-
-      // Reproducir un sonido de prueba
-      playTestSound()
-
-      // Configurar los controles
-      setupControls()
-
-      // Añadir un botón para alternar entre modo manual y modo de notas
-      addFrequencyModeToggle()
-
-      // Configurar el arpegiador
-      setupArpeggiator()
-
-      // Actualizar las notas del teclado según la octava actual
-      updateKeyboardNotes()
-
-      // Ocultar el botón de guardar preset si existe
-      const savePresetButton = document.getElementById("save-preset-btn")
-      if (savePresetButton) {
-        savePresetButton.style.display = "none"
-      }
+      return true
     } catch (error) {
-      debug("Error al inicializar el sintetizador: " + error.message)
-      alert("Error al inicializar el sintetizador. Por favor, recarga la página.")
+      debug("Error al inicializar audio: " + error.message)
+      return false
     }
   }
 
-  // Inicializar el visualizador de forma de onda
+  // Inicializar el sintetizador
+  function initSynth() {
+    debug("Iniciando sintetizador...")
+
+    if (!initAudio()) {
+      alert("Error al inicializar el audio. Por favor, recarga la página.")
+      return
+    }
+
+    // Ocultar el overlay de inicio
+    startOverlay.style.display = "none"
+
+    // Actualizar controles con valores iniciales
+    updateControlsFromSettings()
+
+    // Inicializar el visualizador
+    initVisualizer()
+
+    // Configurar los controles
+    setupControls()
+
+    // Configurar el arpegiador
+    setupArpeggiator()
+
+    // Actualizar las notas del teclado según la octava actual
+    updateKeyboardNotes()
+
+    // Reproducir un sonido de prueba
+    playTestSound()
+
+    debug("Sintetizador inicializado correctamente")
+  }
+
+  // Inicializar el visualizador
   function initVisualizer() {
     visualizerCanvas = document.getElementById("waveform-visualizer")
     if (!visualizerCanvas) {
@@ -278,7 +470,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     visualizerContext = visualizerCanvas.getContext("2d")
 
-    // Ajustar el tamaño del canvas para que coincida con su tamaño en pantalla
+    // Ajustar el tamaño del canvas
     const rect = visualizerCanvas.getBoundingClientRect()
     visualizerCanvas.width = rect.width
     visualizerCanvas.height = rect.height
@@ -317,7 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Configurar el estilo de la línea
       visualizerContext.lineWidth = 2
-      visualizerContext.strokeStyle = isPlaying ? "#ffcc00" : "#999"
+      visualizerContext.strokeStyle = Object.keys(activeOscillators).length > 0 ? "#ffcc00" : "#999"
 
       // Dibujar la forma de onda
       visualizerContext.beginPath()
@@ -346,79 +538,349 @@ document.addEventListener("DOMContentLoaded", () => {
     animate()
   }
 
+  // Actualizar controles desde la configuración actual
+  function updateControlsFromSettings() {
+    waveformSelect.value = currentSettings.waveform
+
+    frequencySlider.value = currentSettings.frequency
+    frequencyValue.textContent = currentSettings.frequency + " Hz"
+
+    filterSlider.value = currentSettings.filter
+    filterValue.textContent = currentSettings.filter + " Hz"
+
+    attackSlider.value = currentSettings.attack
+    attackValue.textContent = currentSettings.attack + " ms"
+
+    delaySlider.value = currentSettings.delay
+    delayValue.textContent = currentSettings.delay + "s"
+
+    lfoFreqSlider.value = currentSettings.lfoFreq
+    lfoFreqValue.textContent = currentSettings.lfoFreq + " Hz"
+
+    lfoDepthSlider.value = currentSettings.lfoDepth
+    lfoDepthValue.textContent = currentSettings.lfoDepth + "%"
+
+    volumeSlider.value = currentSettings.volume
+    volumeValue.textContent = Math.round(currentSettings.volume * 100) + "%"
+  }
+
+  // Actualizar nodos de audio desde la configuración actual
+  function updateAudioNodesFromSettings() {
+    if (!isAudioInitialized) return
+
+    // Actualizar filtro
+    if (filterNode) {
+      filterNode.frequency.value = currentSettings.filter
+    }
+
+    // Actualizar delay
+    if (delayNode) {
+      delayNode.delayTime.value = currentSettings.delay
+    }
+
+    // Actualizar LFO
+    if (lfoNode) {
+      lfoNode.frequency.value = currentSettings.lfoFreq
+    }
+
+    // Actualizar profundidad del LFO
+    if (lfoGainNode) {
+      lfoGainNode.gain.value = (currentSettings.lfoDepth / 100) * 5000
+    }
+
+    // Actualizar volumen
+    if (masterGainNode) {
+      masterGainNode.gain.value = currentSettings.volume
+    }
+  }
+
+  // Reproducir un sonido de prueba
+  function playTestSound() {
+    debug("Reproduciendo sonido de prueba...")
+    try {
+      playNote("C4", 0.2)
+      setTimeout(() => playNote("E4", 0.2), 300)
+      setTimeout(() => playNote("G4", 0.2), 600)
+
+      // Actualizar el logo
+      migueloLogo.src = migueloActive
+      setTimeout(() => {
+        migueloLogo.src = migueloInactive
+      }, 1000)
+
+      debug("Sonido de prueba reproducido correctamente")
+    } catch (error) {
+      debug("Error al reproducir sonido de prueba: " + error.message)
+    }
+  }
+
+  // Reproducir una nota
+  function playNote(note, duration = null) {
+    if (!isAudioInitialized) return
+
+    try {
+      // Obtener la frecuencia de la nota
+      let frequency
+      if (manualFrequencyMode) {
+        frequency = currentSettings.frequency
+      } else {
+        frequency = typeof note === "string" ? noteToFrequency(note) : note
+      }
+
+      // Crear un oscilador
+      const oscillator = audioContext.createOscillator()
+      oscillator.type = currentSettings.waveform
+      oscillator.frequency.value = frequency
+
+      // Crear un nodo de ganancia para la envolvente
+      const gainNode = audioContext.createGain()
+      gainNode.gain.value = 0
+
+      // Conectar el oscilador a la cadena de audio
+      oscillator.connect(gainNode)
+      gainNode.connect(delayNode)
+
+      // Guardar referencias a los nodos activos
+      activeOscillators[note] = oscillator
+      activeGainNodes[note] = gainNode
+
+      // Iniciar el oscilador
+      oscillator.start()
+
+      // Aplicar la envolvente de ataque
+      const now = audioContext.currentTime
+      const attackTime = currentSettings.attack / 1000 // Convertir ms a segundos
+
+      gainNode.gain.setValueAtTime(0, now)
+      gainNode.gain.linearRampToValueAtTime(1, now + attackTime)
+
+      // Actualizar el logo
+      migueloLogo.src = migueloActive
+
+      // Si se especifica una duración, programar la detención
+      if (duration) {
+        setTimeout(() => {
+          stopNote(note)
+        }, duration * 1000)
+      }
+
+      return true
+    } catch (error) {
+      debug("Error al reproducir nota: " + error.message)
+      return false
+    }
+  }
+
+  // Detener una nota
+  function stopNote(note) {
+    if (!isAudioInitialized) return
+
+    try {
+      const oscillator = activeOscillators[note]
+      const gainNode = activeGainNodes[note]
+
+      if (oscillator && gainNode) {
+        // Aplicar una pequeña rampa de salida para evitar clics
+        const now = audioContext.currentTime
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now)
+        gainNode.gain.linearRampToValueAtTime(0, now + 0.01)
+
+        // Programar la detención del oscilador
+        setTimeout(() => {
+          try {
+            oscillator.stop()
+            oscillator.disconnect()
+            gainNode.disconnect()
+
+            // Eliminar las referencias
+            delete activeOscillators[note]
+            delete activeGainNodes[note]
+          } catch (e) {
+            // Ignorar errores si el oscilador ya se detuvo
+          }
+        }, 15)
+
+        // Si no hay más notas activas, cambiar el logo
+        if (Object.keys(activeOscillators).length === 1) {
+          // Solo queda esta nota
+          migueloLogo.src = migueloInactive
+        }
+      }
+    } catch (error) {
+      debug("Error al detener nota: " + error.message)
+    }
+  }
+
+  // Detener todas las notas
+  function stopAllNotes() {
+    if (!isAudioInitialized) return
+
+    // Detener todos los osciladores activos
+    Object.keys(activeOscillators).forEach((note) => {
+      try {
+        const oscillator = activeOscillators[note]
+        const gainNode = activeGainNodes[note]
+
+        if (oscillator && gainNode) {
+          // Silenciar inmediatamente
+          gainNode.gain.cancelScheduledValues(audioContext.currentTime)
+          gainNode.gain.setValueAtTime(0, audioContext.currentTime)
+
+          // Detener y desconectar
+          oscillator.stop()
+          oscillator.disconnect()
+          gainNode.disconnect()
+
+          // Eliminar las referencias
+          delete activeOscillators[note]
+          delete activeGainNodes[note]
+        }
+      } catch (e) {
+        debug("Error al detener oscilador: " + e.message)
+      }
+    })
+
+    // Asegurarse de que el logo vuelva a inactivo
+    migueloLogo.src = migueloInactive
+  }
+
+  // Aplicar un preset
+  function applyPreset(presetName) {
+    const preset = presets[presetName]
+    if (!preset) return
+
+    debug("Aplicando preset: " + presetName)
+
+    // Detener todas las notas activas
+    stopAllNotes()
+
+    // Actualizar configuración actual
+    currentSettings = { ...preset }
+
+    // Actualizar controles
+    updateControlsFromSettings()
+
+    // Actualizar nodos de audio
+    updateAudioNodesFromSettings()
+
+    // Reproducir un sonido para demostrar el preset
+    playNote(currentSettings.frequency, 0.5)
+  }
+
+  // ==================== INICIO DE LA REIMPLEMENTACIÓN DEL ARPEGIADOR ====================
+
   // Configurar el arpegiador
   function setupArpeggiator() {
-    // Inicializar los valores del arpegiador
+    debug("Configurando arpegiador...")
+
+    // Inicializar valores
+    arpeggiatorNotes = []
+    arpeggiatorEnabled = false
+    arpeggiatorRate = Number.parseInt(arpRateSlider.value) || 200
+    arpeggiatorPattern = arpPatternSelect.value || "up"
+    const arpeggiatorOctaveRange = Number.parseInt(arpOctaveSelect.value) || 1
+
+    // Actualizar el display de velocidad
     arpRateValue.textContent = arpeggiatorRate + " ms"
 
     // Configurar los event listeners
-    arpToggleButton.addEventListener("click", () => {
-      arpeggiatorEnabled = !arpeggiatorEnabled
-      arpToggleButton.textContent = arpeggiatorEnabled ? "ARPEGIADOR: ON" : "ARPEGIADOR: OFF"
-      arpToggleButton.classList.toggle("active", arpeggiatorEnabled)
-
-      if (arpeggiatorEnabled) {
-        startArpeggiator()
-      } else {
-        stopArpeggiator()
-      }
-
-      debug("Arpegiador: " + (arpeggiatorEnabled ? "activado" : "desactivado"))
-    })
-
-    arpRateSlider.addEventListener("input", () => {
-      arpeggiatorRate = Number.parseInt(arpRateSlider.value)
-      arpRateValue.textContent = arpeggiatorRate + " ms"
-
-      // Si el arpegiador está activo, reiniciarlo con la nueva velocidad
-      if (arpeggiatorEnabled && arpeggiatorNotes.length > 0) {
-        stopArpeggiator()
-        startArpeggiator()
-      }
-
-      debug("Velocidad del arpegiador: " + arpeggiatorRate + " ms")
-    })
-
-    arpPatternSelect.addEventListener("change", () => {
-      arpeggiatorPattern = arpPatternSelect.value
-
-      // Si el arpegiador está activo, reiniciar el índice
-      if (arpeggiatorEnabled) {
-        arpeggiatorIndex = 0
-        arpeggiatorOctaveOffset = 0
-      }
-
-      debug("Patrón del arpegiador: " + arpeggiatorPattern)
-    })
-
-    arpOctaveSelect.addEventListener("change", () => {
-      arpeggiatorOctaveRange = Number.parseInt(arpOctaveSelect.value)
-
-      // Si el arpegiador está activo, reiniciar el índice
-      if (arpeggiatorEnabled) {
-        arpeggiatorIndex = 0
-        arpeggiatorOctaveOffset = 0
-      }
-
-      debug("Rango de octavas del arpegiador: " + arpeggiatorOctaveRange)
-    })
+    arpToggleButton.addEventListener("click", toggleArpeggiator)
+    arpRateSlider.addEventListener("input", updateArpeggiatorRate)
+    arpPatternSelect.addEventListener("change", updateArpeggiatorPattern)
+    arpOctaveSelect.addEventListener("change", updateArpeggiatorOctaveRange)
 
     // Inicializar el display de notas
     updateArpeggiatorDisplay()
+
+    debug("Arpegiador configurado correctamente")
+  }
+
+  // Alternar el estado del arpegiador (activar/desactivar)
+  function toggleArpeggiator() {
+    arpeggiatorEnabled = !arpeggiatorEnabled
+
+    // Actualizar el texto del botón
+    arpToggleButton.textContent = arpeggiatorEnabled
+      ? translations[currentLanguage].arpToggle.on
+      : translations[currentLanguage].arpToggle.off
+
+    // Actualizar la clase del botón
+    arpToggleButton.classList.toggle("active", arpeggiatorEnabled)
+
+    if (arpeggiatorEnabled) {
+      // Si hay notas activas, iniciar el arpegiador
+      if (arpeggiatorNotes.length > 0) {
+        startArpeggiator()
+      }
+    } else {
+      // Detener el arpegiador
+      stopArpeggiator()
+    }
+
+    debug("Arpegiador: " + (arpeggiatorEnabled ? "activado" : "desactivado"))
+  }
+
+  // Actualizar la velocidad del arpegiador
+  function updateArpeggiatorRate() {
+    arpeggiatorRate = Number.parseInt(arpRateSlider.value)
+    arpRateValue.textContent = arpeggiatorRate + " ms"
+
+    // Si el arpegiador está activo, reiniciarlo con la nueva velocidad
+    if (arpeggiatorEnabled && arpeggiatorTimer) {
+      stopArpeggiator()
+      startArpeggiator()
+    }
+
+    debug("Velocidad del arpegiador: " + arpeggiatorRate + " ms")
+  }
+
+  // Actualizar el patrón del arpegiador
+  function updateArpeggiatorPattern() {
+    arpeggiatorPattern = arpPatternSelect.value
+
+    // Reiniciar índices
+    arpeggiatorIndex = 0
+    arpeggiatorDirection = 1
+    arpeggiatorOctaveOffset = 0
+
+    debug("Patrón del arpegiador: " + arpeggiatorPattern)
+  }
+
+  // Actualizar el rango de octavas del arpegiador
+  function updateArpeggiatorOctaveRange() {
+    arpeggiatorOctaveRange = Number.parseInt(arpOctaveSelect.value)
+
+    // Reiniciar el offset de octava
+    arpeggiatorOctaveOffset = 0
+
+    debug("Rango de octavas del arpegiador: " + arpeggiatorOctaveRange)
   }
 
   // Iniciar el arpegiador
   function startArpeggiator() {
-    if (!arpeggiatorEnabled || arpeggiatorNotes.length === 0) return
+    // Verificar que el arpegiador esté habilitado y haya notas
+    if (!arpeggiatorEnabled || arpeggiatorNotes.length === 0) {
+      return
+    }
 
-    stopArpeggiator() // Detener cualquier arpegio anterior
+    // Detener cualquier arpegio anterior
+    stopArpeggiator()
 
+    // Reiniciar índices
     arpeggiatorIndex = 0
     arpeggiatorOctaveOffset = 0
+    arpeggiatorDirection = 1
+
+    debug("Iniciando arpegiador con " + arpeggiatorNotes.length + " notas")
+
+    // Reproducir la primera nota inmediatamente
     playArpeggiatorNote()
 
+    // Configurar el temporizador para las siguientes notas
     arpeggiatorTimer = setInterval(() => {
+      // Actualizar el índice para la siguiente nota
       updateArpeggiatorIndex()
+      // Reproducir la nota
       playArpeggiatorNote()
     }, arpeggiatorRate)
   }
@@ -428,48 +890,66 @@ document.addEventListener("DOMContentLoaded", () => {
     if (arpeggiatorTimer) {
       clearInterval(arpeggiatorTimer)
       arpeggiatorTimer = null
-    }
 
-    // Detener cualquier nota que esté sonando
-    stopNote()
+      // Detener cualquier nota que esté sonando
+      stopAllNotes()
+
+      debug("Arpegiador detenido")
+    }
   }
 
-  // Actualizar el índice del arpegiador según el patrón
+  // Actualizar el índice del arpegiador según el patrón seleccionado
   function updateArpeggiatorIndex() {
     if (arpeggiatorNotes.length === 0) return
 
     switch (arpeggiatorPattern) {
       case "up":
+        // Patrón ascendente
         arpeggiatorIndex = (arpeggiatorIndex + 1) % arpeggiatorNotes.length
-        if (arpeggiatorIndex === 0) {
+
+        // Si volvemos al inicio, incrementar la octava
+        if (arpeggiatorIndex === 0 && arpeggiatorOctaveRange > 1) {
           arpeggiatorOctaveOffset = (arpeggiatorOctaveOffset + 1) % arpeggiatorOctaveRange
         }
         break
+
       case "down":
+        // Patrón descendente
         arpeggiatorIndex = (arpeggiatorIndex - 1 + arpeggiatorNotes.length) % arpeggiatorNotes.length
-        if (arpeggiatorIndex === arpeggiatorNotes.length - 1) {
+
+        // Si llegamos al final, decrementar la octava
+        if (arpeggiatorIndex === arpeggiatorNotes.length - 1 && arpeggiatorOctaveRange > 1) {
           arpeggiatorOctaveOffset = (arpeggiatorOctaveOffset - 1 + arpeggiatorOctaveRange) % arpeggiatorOctaveRange
         }
         break
+
       case "updown":
-        // Implementación de arriba/abajo
-        if (arpeggiatorIndex >= arpeggiatorNotes.length - 1 && arpeggiatorDirection === 1) {
-          if (arpeggiatorOctaveOffset < arpeggiatorOctaveRange - 1) {
+        // Patrón arriba/abajo
+        arpeggiatorIndex += arpeggiatorDirection
+
+        // Cambiar dirección en los extremos
+        if (arpeggiatorIndex >= arpeggiatorNotes.length - 1) {
+          arpeggiatorDirection = -1
+
+          // Si llegamos al final y hay más de una octava, incrementar octava
+          if (arpeggiatorOctaveRange > 1 && arpeggiatorOctaveOffset < arpeggiatorOctaveRange - 1) {
             arpeggiatorOctaveOffset++
-          } else {
-            arpeggiatorDirection = -1
           }
-        } else if (arpeggiatorIndex <= 0 && arpeggiatorDirection === -1) {
-          if (arpeggiatorOctaveOffset > 0) {
+        } else if (arpeggiatorIndex <= 0) {
+          arpeggiatorDirection = 1
+
+          // Si volvemos al inicio y no estamos en la octava base, decrementar octava
+          if (arpeggiatorOctaveRange > 1 && arpeggiatorOctaveOffset > 0) {
             arpeggiatorOctaveOffset--
-          } else {
-            arpeggiatorDirection = 1
           }
         }
-        arpeggiatorIndex += arpeggiatorDirection
         break
+
       case "random":
+        // Patrón aleatorio
         arpeggiatorIndex = Math.floor(Math.random() * arpeggiatorNotes.length)
+
+        // Si hay más de una octava, elegir una octava aleatoria
         if (arpeggiatorOctaveRange > 1) {
           arpeggiatorOctaveOffset = Math.floor(Math.random() * arpeggiatorOctaveRange)
         }
@@ -479,32 +959,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Reproducir la nota actual del arpegiador
   function playArpeggiatorNote() {
-    if (arpeggiatorNotes.length === 0) return
+    if (arpeggiatorNotes.length === 0 || !arpeggiatorEnabled) return
 
-    const note = arpeggiatorNotes[arpeggiatorIndex]
+    // Detener cualquier nota anterior
+    stopAllNotes()
 
-    // Aplicar el desplazamiento de octava
+    // Obtener la nota base
+    const baseNote = arpeggiatorNotes[arpeggiatorIndex]
+
+    // Aplicar el desplazamiento de octava si es necesario
+    let noteToPlay = baseNote
     if (arpeggiatorOctaveOffset > 0) {
-      const noteName = note.slice(0, -1)
-      const octave = Number.parseInt(note.slice(-1)) + arpeggiatorOctaveOffset
-      const transposedNote = noteName + octave
-      playNote(transposedNote)
-
-      // Resaltar la tecla correspondiente (aunque no esté visible en el teclado)
-      debug("Arpegiador tocando: " + transposedNote)
-    } else {
-      playNote(note)
-
-      // Resaltar la tecla correspondiente
-      pianoKeys.forEach((key) => {
-        if (key.dataset.note === note) {
-          key.classList.add("active")
-          setTimeout(() => {
-            key.classList.remove("active")
-          }, arpeggiatorRate * 0.8) // Quitar la clase active un poco antes de la siguiente nota
-        }
-      })
+      const noteName = baseNote.slice(0, -1)
+      const octave = Number.parseInt(baseNote.slice(-1)) + arpeggiatorOctaveOffset
+      noteToPlay = noteName + octave
     }
+
+    // Reproducir la nota
+    playNote(noteToPlay)
+
+    // Resaltar la tecla correspondiente en el teclado
+    highlightKey(noteToPlay)
+
+    debug("Arpegiador tocando: " + noteToPlay)
+  }
+
+  // Resaltar una tecla en el teclado
+  function highlightKey(note) {
+    pianoKeys.forEach((key) => {
+      if (key.dataset.note === note) {
+        key.classList.add("active")
+
+        // Quitar la clase después de un tiempo
+        setTimeout(() => {
+          key.classList.remove("active")
+        }, arpeggiatorRate * 0.8)
+      }
+    })
   }
 
   // Actualizar el display de notas del arpegiador
@@ -512,17 +1003,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!arpNotesDisplay) return
 
     if (arpeggiatorNotes.length === 0) {
-      arpNotesDisplay.textContent = "No hay notas activas"
+      arpNotesDisplay.textContent = translations[currentLanguage].arpNotesDisplay
     } else {
-      arpNotesDisplay.textContent = "Notas: " + arpeggiatorNotes.join(", ")
+      const prefix = currentLanguage === "es" ? "Notas: " : "Notes: "
+      arpNotesDisplay.textContent = prefix + arpeggiatorNotes.join(", ")
     }
   }
 
   // Añadir una nota al arpegiador
   function addNoteToArpeggiator(note) {
+    // Evitar duplicados
     if (!arpeggiatorNotes.includes(note)) {
       arpeggiatorNotes.push(note)
       updateArpeggiatorDisplay()
+
+      debug("Nota añadida al arpegiador: " + note)
 
       // Si el arpegiador está activo y esta es la primera nota, iniciarlo
       if (arpeggiatorEnabled && arpeggiatorNotes.length === 1) {
@@ -538,6 +1033,8 @@ document.addEventListener("DOMContentLoaded", () => {
       arpeggiatorNotes.splice(index, 1)
       updateArpeggiatorDisplay()
 
+      debug("Nota eliminada del arpegiador: " + note)
+
       // Si no quedan notas, detener el arpegiador
       if (arpeggiatorNotes.length === 0) {
         stopArpeggiator()
@@ -549,42 +1046,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Añadir un botón para alternar entre modo manual y modo de notas
-  function addFrequencyModeToggle() {
-    const toggleButton = document.createElement("button")
-    toggleButton.textContent = manualFrequencyMode ? "MODO: FRECUENCIA MANUAL" : "MODO: NOTAS MUSICALES"
-    toggleButton.style.padding = "10px 15px"
-    toggleButton.style.backgroundColor = manualFrequencyMode ? "#ffcc00" : "#43e8d8"
-    toggleButton.style.color = "#000"
-    toggleButton.style.border = "none"
-    toggleButton.style.borderRadius = "5px"
-    toggleButton.style.fontFamily = "Orbitron, sans-serif"
-    toggleButton.style.fontSize = "14px"
-    toggleButton.style.cursor = "pointer"
-    toggleButton.style.margin = "0 auto 15px auto"
-    toggleButton.style.display = "block"
-    toggleButton.style.width = "fit-content"
-
-    toggleButton.addEventListener("click", function () {
-      manualFrequencyMode = !manualFrequencyMode
-      this.textContent = manualFrequencyMode ? "MODO: FRECUENCIA MANUAL" : "MODO: NOTAS MUSICALES"
-      this.style.backgroundColor = manualFrequencyMode ? "#ffcc00" : "#43e8d8"
-      debug("Modo de frecuencia cambiado a: " + (manualFrequencyMode ? "Manual" : "Notas"))
-    })
-
-    // Insertar el botón justo antes del contenedor del teclado
-    const keyboardContainer = document.querySelector(".keyboard-container")
-    if (keyboardContainer) {
-      keyboardContainer.insertBefore(toggleButton, keyboardContainer.firstChild)
-    } else {
-      // Si no se encuentra el contenedor del teclado, añadirlo al contenedor del sintetizador
-      document.querySelector(".synth-container").appendChild(toggleButton)
-    }
-  }
+  // ==================== FIN DE LA REIMPLEMENTACIÓN DEL ARPEGIADOR ====================
 
   // Actualizar las notas del teclado según la octava actual
   function updateKeyboardNotes() {
-    const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "C"]
     const whiteKeys = document.querySelectorAll(".white-key")
     const blackKeys = document.querySelectorAll(".black-key")
 
@@ -608,16 +1073,14 @@ document.addEventListener("DOMContentLoaded", () => {
     })
 
     // Actualizar el display de octava
-    currentOctaveDisplay.textContent = "Octava: " + currentOctave
+    currentOctaveDisplay.textContent = translations[currentLanguage].octaveDisplay + currentOctave
 
     // Actualizar el mapeo del teclado físico
     updateKeyboardMap()
   }
 
-  // Inicializar el mapeo del teclado físico
-  let keyboardMap = {}
-
   // Actualizar el mapeo del teclado físico
+  let keyboardMap = {}
   function updateKeyboardMap() {
     // Mapeo de teclas físicas a notas musicales
     keyboardMap = {
@@ -637,216 +1100,54 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Actualizar controles desde la configuración actual
-  function updateControlsFromSettings() {
-    waveformSelect.value = currentSettings.waveform
-
-    frequencySlider.value = currentSettings.frequency
-    frequencyValue.textContent = currentSettings.frequency + " Hz"
-
-    filterSlider.value = currentSettings.filter
-    filterValue.textContent = currentSettings.filter + " Hz"
-
-    distortionSlider.value = currentSettings.distortion
-    distortionValue.textContent = currentSettings.distortion + "%"
-
-    delaySlider.value = currentSettings.delay
-    delayValue.textContent = currentSettings.delay + "s"
-
-    lfoFreqSlider.value = currentSettings.lfoFreq
-    lfoFreqValue.textContent = currentSettings.lfoFreq + " Hz"
-
-    lfoDepthSlider.value = currentSettings.lfoDepth
-    lfoDepthValue.textContent = currentSettings.lfoDepth + "%"
-
-    volumeSlider.value = currentSettings.volume
-    volumeValue.textContent = Math.round(currentSettings.volume * 100) + "%"
-  }
-
-  // Reproducir un sonido de prueba
-  function playTestSound() {
-    debug("Reproduciendo sonido de prueba...")
-    try {
-      playNote("C4", 0.2)
-      setTimeout(() => playNote("E4", 0.2), 300)
-      setTimeout(() => playNote("G4", 0.2), 600)
-
-      // Actualizar el logo
-      migueloLogo.src = migueloActive
-      setTimeout(() => {
-        migueloLogo.src = migueloInactive
-      }, 1000)
-
-      debug("Sonido de prueba reproducido correctamente")
-    } catch (error) {
-      debug("Error al reproducir sonido de prueba: " + error.message)
-    }
-  }
-
-  // Función para tocar una nota
-  function playNote(note, duration = null) {
-    if (!audioContext) return
-
-    // Si ya hay un oscilador sonando, detenerlo
-    stopNote()
-
-    try {
-      // Crear un nuevo oscilador
-      oscillator = audioContext.createOscillator()
-
-      // Aplicar la configuración actual al oscilador
-      oscillator.type = currentSettings.waveform
-
-      // Establecer la frecuencia según el modo
-      let noteFreq
-
-      if (manualFrequencyMode) {
-        // Usar la frecuencia del control deslizante
-        noteFreq = currentSettings.frequency
-        debug("Usando frecuencia manual: " + noteFreq + " Hz")
-      } else {
-        // Usar la frecuencia de la nota
-        if (typeof note === "string") {
-          noteFreq = noteToFrequency(note)
-        } else if (typeof note === "number") {
-          noteFreq = note
-        } else {
-          noteFreq = currentSettings.frequency
-        }
-        debug("Usando frecuencia de nota: " + noteFreq + " Hz")
-      }
-
-      oscillator.frequency.value = noteFreq
-
-      // Conectar el oscilador a la cadena de efectos
-      oscillator.connect(delayNode)
-
-      // Iniciar el oscilador
-      oscillator.start()
-      isPlaying = true
-
-      // Actualizar el logo
-      migueloLogo.src = migueloActive
-
-      // Si se especifica una duración, programar la detención
-      if (duration) {
-        setTimeout(() => {
-          stopNote()
-        }, duration * 1000)
-      }
-    } catch (error) {
-      debug("Error al reproducir nota: " + error.message)
-    }
-  }
-
-  // Función para detener la nota actual
-  function stopNote() {
-    if (oscillator && isPlaying) {
-      try {
-        oscillator.stop()
-        oscillator.disconnect()
-        oscillator = null
-        isPlaying = false
-
-        // Volver al logo inactivo
-        migueloLogo.src = migueloInactive
-      } catch (error) {
-        debug("Error al detener nota: " + error.message)
-      }
-    }
-  }
-
-  // Aplicar un preset
-  function applyPreset(presetName) {
-    const preset = presets[presetName]
-    if (!preset) return
-
-    debug("Aplicando preset: " + presetName)
-
-    // Actualizar configuración actual
-    currentSettings = { ...preset }
-
-    // Forzar delay a 0 como solicitado
-    currentSettings.delay = 0
-
-    // Actualizar controles
-    updateControlsFromSettings()
-
-    // Actualizar nodos de audio
-    updateAudioNodesFromSettings()
-
-    // Reproducir un sonido para demostrar el preset
-    playNote(currentSettings.frequency, 0.3)
-  }
-
-  // Actualizar nodos de audio desde la configuración actual
-  function updateAudioNodesFromSettings() {
-    if (!audioContext) return
-
-    // Actualizar filtro
-    if (filterNode) {
-      filterNode.frequency.value = currentSettings.filter
-    }
-
-    // Actualizar distorsión
-    if (distortionNode) {
-      distortionNode.curve = createDistortionCurve(currentSettings.distortion)
-    }
-
-    // Actualizar delay
-    if (delayNode) {
-      delayNode.delayTime.value = currentSettings.delay
-    }
-
-    // Actualizar feedback del delay
-    if (feedbackNode) {
-      feedbackNode.gain.value = currentSettings.delay * 0.5
-    }
-
-    // Actualizar LFO
-    if (lfoNode) {
-      lfoNode.frequency.value = currentSettings.lfoFreq
-    }
-
-    // Actualizar profundidad del LFO
-    if (lfoGainNode) {
-      lfoGainNode.gain.value = (currentSettings.lfoDepth / 100) * 5000
-    }
-
-    // Actualizar volumen
-    if (gainNode) {
-      gainNode.gain.value = currentSettings.volume
-    }
-  }
-
   // Configurar los controles
   function setupControls() {
     debug("Configurando controles...")
 
+    // Configurar el botón de idioma
+    languageButton.addEventListener("click", () => {
+      const newLang = currentLanguage === "es" ? "en" : "es"
+      changeLanguage(newLang)
+      debug("Idioma cambiado a: " + newLang)
+    })
+
+    // Configurar el botón de modo de frecuencia
+    frequencyModeToggle.addEventListener("click", function () {
+      manualFrequencyMode = !manualFrequencyMode
+      this.textContent = manualFrequencyMode
+        ? translations[currentLanguage].frequencyMode.manual
+        : translations[currentLanguage].frequencyMode.notes
+      this.classList.toggle("manual-mode", manualFrequencyMode)
+
+      // Habilitar o deshabilitar el control de frecuencia según el modo
+      frequencySlider.disabled = !manualFrequencyMode
+
+      debug("Modo de frecuencia cambiado a: " + (manualFrequencyMode ? "Manual" : "Notas"))
+    })
+
     // Waveform
     waveformSelect.addEventListener("change", function () {
-      // Actualizar la configuración actual
       currentSettings.waveform = this.value
       debug("Tipo de onda cambiado a: " + this.value)
 
-      // Si hay un oscilador activo, actualizar su tipo
-      if (oscillator) {
-        oscillator.type = this.value
-      }
+      // Actualizar los osciladores activos
+      Object.values(activeOscillators).forEach((osc) => {
+        osc.type = currentSettings.waveform
+      })
     })
 
     // Frequency
     frequencySlider.addEventListener("input", function () {
       const freq = Number.parseInt(this.value)
       frequencyValue.textContent = freq + " Hz"
-
-      // Actualizar la configuración actual
       currentSettings.frequency = freq
       debug("Frecuencia cambiada a: " + freq + " Hz")
 
-      // Si hay un oscilador activo y estamos en modo manual, actualizar su frecuencia
-      if (oscillator && manualFrequencyMode) {
-        oscillator.frequency.value = freq
+      // Si estamos en modo manual y hay osciladores activos, actualizar su frecuencia
+      if (manualFrequencyMode) {
+        Object.values(activeOscillators).forEach((osc) => {
+          osc.frequency.value = freq
+        })
       }
     })
 
@@ -854,8 +1155,6 @@ document.addEventListener("DOMContentLoaded", () => {
     filterSlider.addEventListener("input", function () {
       const freq = Number.parseInt(this.value)
       filterValue.textContent = freq + " Hz"
-
-      // Actualizar la configuración actual
       currentSettings.filter = freq
 
       // Actualizar el filtro
@@ -864,36 +1163,23 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     })
 
-    // Distortion
-    distortionSlider.addEventListener("input", function () {
-      const amount = Number.parseInt(this.value)
-      distortionValue.textContent = amount + "%"
-
-      // Actualizar la configuración actual
-      currentSettings.distortion = amount
-
-      // Actualizar la distorsión
-      if (distortionNode) {
-        distortionNode.curve = createDistortionCurve(amount)
-      }
+    // Attack
+    attackSlider.addEventListener("input", function () {
+      const attackMs = Number.parseInt(this.value)
+      attackValue.textContent = attackMs + " ms"
+      currentSettings.attack = attackMs
+      debug("Tiempo de ataque cambiado a: " + attackMs + " ms")
     })
 
     // Delay
     delaySlider.addEventListener("input", function () {
       const time = Number.parseFloat(this.value)
       delayValue.textContent = time + "s"
-
-      // Actualizar la configuración actual
       currentSettings.delay = time
 
       // Actualizar el delay
       if (delayNode) {
         delayNode.delayTime.value = time
-      }
-
-      // Actualizar el feedback del delay
-      if (feedbackNode) {
-        feedbackNode.gain.value = time * 0.5
       }
     })
 
@@ -901,8 +1187,6 @@ document.addEventListener("DOMContentLoaded", () => {
     lfoFreqSlider.addEventListener("input", function () {
       const freq = Number.parseFloat(this.value)
       lfoFreqValue.textContent = freq + " Hz"
-
-      // Actualizar la configuración actual
       currentSettings.lfoFreq = freq
 
       // Actualizar la frecuencia del LFO
@@ -915,8 +1199,6 @@ document.addEventListener("DOMContentLoaded", () => {
     lfoDepthSlider.addEventListener("input", function () {
       const depth = Number.parseInt(this.value)
       lfoDepthValue.textContent = depth + "%"
-
-      // Actualizar la configuración actual
       currentSettings.lfoDepth = depth
 
       // Actualizar la profundidad del LFO
@@ -929,13 +1211,11 @@ document.addEventListener("DOMContentLoaded", () => {
     volumeSlider.addEventListener("input", function () {
       const vol = Number.parseFloat(this.value)
       volumeValue.textContent = Math.round(vol * 100) + "%"
-
-      // Actualizar la configuración actual
       currentSettings.volume = vol
 
       // Actualizar el volumen
-      if (gainNode) {
-        gainNode.gain.value = vol
+      if (masterGainNode) {
+        masterGainNode.gain.value = vol
       }
     })
 
@@ -964,6 +1244,89 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     })
 
+    // Configurar el botón de stop
+    stopButton.addEventListener("click", () => {
+      debug("Botón de stop presionado - Deteniendo sintetizador completamente")
+
+      // Detener todas las notas activas
+      stopAllNotes()
+
+      // Detener el arpegiador si está activo
+      if (arpeggiatorEnabled) {
+        stopArpeggiator()
+        // Mantener el arpegiador habilitado pero sin notas activas
+        arpeggiatorNotes = []
+        updateArpeggiatorDisplay()
+      }
+
+      // Detener y desconectar el LFO si existe
+      if (lfoNode) {
+        try {
+          // Guardar referencia al nodo actual
+          const currentLfoNode = lfoNode
+          const currentLfoGainNode = lfoGainNode
+
+          // Crear nuevos nodos
+          lfoNode = audioContext.createOscillator()
+          lfoNode.frequency.value = currentSettings.lfoFreq
+
+          lfoGainNode = audioContext.createGain()
+          lfoGainNode.gain.value = (currentSettings.lfoDepth / 100) * 5000
+
+          // Conectar los nuevos nodos
+          lfoNode.connect(lfoGainNode)
+          lfoGainNode.connect(filterNode.frequency)
+          lfoNode.start()
+
+          // Detener y desconectar los nodos anteriores
+          currentLfoNode.stop()
+          currentLfoNode.disconnect()
+          currentLfoGainNode.disconnect()
+        } catch (e) {
+          debug("Error al reiniciar LFO: " + e.message)
+        }
+      }
+
+      // Suspender el contexto de audio para detener todo procesamiento de audio
+      if (audioContext && audioContext.state === "running") {
+        audioContext
+          .suspend()
+          .then(() => {
+            debug("Contexto de audio suspendido")
+
+            // Reanudar el contexto después de un breve momento para permitir futuras interacciones
+            setTimeout(() => {
+              audioContext.resume().then(() => {
+                debug("Contexto de audio reanudado")
+              })
+            }, 100)
+          })
+          .catch((err) => {
+            debug("Error al suspender contexto de audio: " + err.message)
+          })
+      }
+
+      // Limpiar cualquier animación del visualizador
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+        // Reiniciar la animación
+        drawWaveform()
+      }
+
+      // Efecto visual para indicar que se ha detenido todo
+      migueloLogo.src = migueloInactive
+
+      // Quitar la clase active de todas las teclas del piano
+      pianoKeys.forEach((key) => {
+        key.classList.remove("active")
+      })
+
+      // Limpiar el conjunto de teclas presionadas
+      pressedKeys.clear()
+
+      debug("Sintetizador detenido completamente")
+    })
+
     // Configurar eventos para cada tecla del piano
     pianoKeys.forEach((key) => {
       // Función para activar la tecla
@@ -986,7 +1349,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (arpeggiatorEnabled) {
           removeNoteFromArpeggiator(note)
         } else {
-          stopNote()
+          stopNote(note)
         }
       }
 
@@ -1030,11 +1393,7 @@ document.addEventListener("DOMContentLoaded", () => {
       })
     })
 
-    // Inicializar el mapeo del teclado físico
-    updateKeyboardMap()
-
-    const pressedKeys = new Set()
-
+    // Eventos de teclado
     window.addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase()
 
@@ -1075,11 +1434,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // Si el arpegiador está activado, quitar la nota del arpegiador
         if (arpeggiatorEnabled) {
           removeNoteFromArpeggiator(note)
-        }
-
-        // Si no hay más teclas presionadas y el arpegiador no está activado, detener el sonido
-        if (pressedKeys.size === 0 && !arpeggiatorEnabled) {
-          stopNote()
+        } else {
+          stopNote(note)
         }
       }
     })
@@ -1087,7 +1443,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Cambio de tema
     themeButton.addEventListener("click", function () {
       document.body.classList.toggle("dark-theme")
-      this.textContent = document.body.classList.contains("dark-theme") ? "MODO CLARO" : "MODO OSCURO"
+      this.textContent = document.body.classList.contains("dark-theme")
+        ? translations[currentLanguage].themeButton.dark
+        : translations[currentLanguage].themeButton.light
     })
 
     // Redimensionar el visualizador cuando cambia el tamaño de la ventana
@@ -1096,6 +1454,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const rect = visualizerCanvas.getBoundingClientRect()
         visualizerCanvas.width = rect.width
         visualizerCanvas.height = rect.height
+      }
+    })
+
+    // Añadir un evento de visibilidad para limpiar cuando la página pierde el foco
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stopAllNotes()
+        if (arpeggiatorTimer) {
+          clearInterval(arpeggiatorTimer)
+          arpeggiatorTimer = null
+        }
       }
     })
 
@@ -1118,6 +1487,9 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     { passive: false },
   )
+
+  // Actualizar los textos de la interfaz con el idioma actual
+  updateUITexts()
 
   debug("Script cargado completamente")
 })

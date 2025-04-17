@@ -11,7 +11,7 @@
     <div class="synth-container">
         <div id="start-overlay">
             <h1>MIGUELO SYNTH</h1>
-            <p>Haz clic para iniciar el sintetizador</p>
+            <p id="start-text">Haz clic para iniciar el sintetizador</p>
             <button id="start-button">INICIAR</button>
         </div>
         
@@ -20,90 +20,99 @@
                 <img id="miguelo-logo" src="./images/miguelo-inactive.png" alt="Miguelo Logo">
                 <h1>MIGUELO SYNTH</h1>
             </div>
-            <button id="theme-button">MODO OSCURO</button>
+            <div class="header-buttons">
+                <button id="language-button">EN</button>
+                <button id="theme-button">MODO OSCURO</button>
+            </div>
         </header>
         
         <div class="controls-container">
             <div class="control-group">
-                <label for="waveform">FORMA DE ONDA</label>
+                <label for="waveform" id="waveform-label">FORMA DE ONDA</label>
                 <select id="waveform">
-                    <option value="sine">Senoidal</option>
-                    <option value="square">Cuadrada</option>
-                    <option value="sawtooth">Sierra</option>
-                    <option value="triangle">Triangular</option>
+                    <option value="sine" id="sine-option">Senoidal</option>
+                    <option value="square" id="square-option">Cuadrada</option>
+                    <option value="sawtooth" id="sawtooth-option">Sierra</option>
+                    <option value="triangle" id="triangle-option">Triangular</option>
                 </select>
             </div>
             
             <div class="control-group">
-                <label for="frequency">FRECUENCIA</label>
-                <input type="range" id="frequency" min="20" max="2000" step="1" value="440">
+                <label for="frequency" id="frequency-label">FRECUENCIA</label>
+                <button id="frequency-mode-toggle" class="mode-toggle">MODO: NOTAS MUSICALES</button>
+                <input type="range" id="frequency" min="20" max="2000" step="1" value="440" disabled>
                 <span id="frequency-value">440 Hz</span>
             </div>
             
             <div class="control-group">
-                <label for="filter">FILTRO</label>
+                <label for="filter" id="filter-label">FILTRO</label>
                 <input type="range" id="filter" min="20" max="20000" step="1" value="20000">
                 <span id="filter-value">20000 Hz</span>
             </div>
             
             <div class="control-group">
-                <label for="distortion">DISTORSIÓN</label>
+                <label for="distortion" id="distortion-label">DISTORSIÓN</label>
                 <input type="range" id="distortion" min="0" max="100" step="1" value="0">
                 <span id="distortion-value">0%</span>
             </div>
             
             <div class="control-group">
-                <label for="delay">DELAY</label>
+                <label for="delay" id="delay-label">DELAY</label>
                 <input type="range" id="delay" min="0" max="1" step="0.01" value="0">
                 <span id="delay-value">0s</span>
             </div>
             
             <div class="control-group">
-                <label for="lfo-freq">LFO FRECUENCIA</label>
-                <input type="range" id="lfo-freq" min="0" max="20" step="0.1" value="0">
-                <span id="lfo-freq-value">0 Hz</span>
-            </div>
-            
-            <div class="control-group">
-                <label for="lfo-depth">LFO PROFUNDIDAD</label>
-                <input type="range" id="lfo-depth" min="0" max="100" step="1" value="0">
-                <span id="lfo-depth-value">0%</span>
-            </div>
-            
-            <div class="control-group">
-                <label for="volume">VOLUMEN</label>
+                <label for="volume" id="volume-label">VOLUMEN</label>
                 <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
                 <span id="volume-value">50%</span>
+            </div>
+        </div>
+
+        <!-- Sección para LFO -->
+        <div class="lfo-container">
+            <h2>LFO</h2>
+            <div class="lfo-controls">
+                <div class="lfo-control-group">
+                    <label for="lfo-freq" id="lfo-freq-label">FRECUENCIA</label>
+                    <input type="range" id="lfo-freq" min="0" max="20" step="0.1" value="0">
+                    <span id="lfo-freq-value">0 Hz</span>
+                </div>
+                <div class="lfo-control-group">
+                    <label for="lfo-depth" id="lfo-depth-label">PROFUNDIDAD</label>
+                    <input type="range" id="lfo-depth" min="0" max="100" step="1" value="0">
+                    <span id="lfo-depth-value">0%</span>
+                </div>
             </div>
         </div>
         
         <!-- Sección del Arpegiador -->
         <div class="arpeggiator-container">
-            <h2>ARPEGIADOR</h2>
+            <h2 id="arpeggiator-title">ARPEGIADOR</h2>
             <div class="arpeggiator-controls">
                 <div class="arp-control-group">
                     <button id="arp-toggle" class="arp-button">ARPEGIADOR: OFF</button>
                 </div>
                 <div class="arp-control-group">
-                    <label for="arp-rate">VELOCIDAD</label>
+                    <label for="arp-rate" id="arp-rate-label">VELOCIDAD</label>
                     <input type="range" id="arp-rate" min="50" max="500" step="10" value="200">
                     <span id="arp-rate-value">200 ms</span>
                 </div>
                 <div class="arp-control-group">
-                    <label for="arp-pattern">PATRÓN</label>
+                    <label for="arp-pattern" id="arp-pattern-label">PATRÓN</label>
                     <select id="arp-pattern">
-                        <option value="up">Ascendente</option>
-                        <option value="down">Descendente</option>
-                        <option value="updown">Arriba/Abajo</option>
-                        <option value="random">Aleatorio</option>
+                        <option value="up" id="up-option">Ascendente</option>
+                        <option value="down" id="down-option">Descendente</option>
+                        <option value="updown" id="updown-option">Arriba/Abajo</option>
+                        <option value="random" id="random-option">Aleatorio</option>
                     </select>
                 </div>
                 <div class="arp-control-group">
-                    <label for="arp-octave">RANGO DE OCTAVAS</label>
+                    <label for="arp-octave" id="arp-octave-label">RANGO DE OCTAVAS</label>
                     <select id="arp-octave">
-                        <option value="1">1 Octava</option>
-                        <option value="2">2 Octavas</option>
-                        <option value="3">3 Octavas</option>
+                        <option value="1" id="octave1-option">1 Octava</option>
+                        <option value="2" id="octave2-option">2 Octavas</option>
+                        <option value="3" id="octave3-option">3 Octavas</option>
                     </select>
                 </div>
                 <div class="arp-notes-display" id="arp-notes-display">
@@ -113,19 +122,19 @@
         </div>
         
         <div class="presets-container">
-            <h2>PRESETS</h2>
+            <h2 id="presets-title">PRESETS</h2>
             <div class="preset-buttons">
-                <button class="preset-btn" data-preset="espacio-glitch">ESPACIO GLITCH</button>
-                <button class="preset-btn" data-preset="robot-malvado">ROBOT MALVADO</button>
-                <button class="preset-btn" data-preset="eco-alienigena">ECO ALIENÍGENA</button>
-                <button class="preset-btn" data-preset="laser-funky">LÁSER FUNKY</button>
-                <button class="preset-btn" data-preset="ruido-caotico">RUIDO CAÓTICO</button>
+                <button class="preset-btn" data-preset="espacio-glitch" id="preset-space">ESPACIO GLITCH</button>
+                <button class="preset-btn" data-preset="robot-malvado" id="preset-robot">ROBOT MALVADO</button>
+                <button class="preset-btn" data-preset="eco-alienigena" id="preset-alien">ECO ALIENÍGENA</button>
+                <button class="preset-btn" data-preset="laser-funky" id="preset-laser">LÁSER FUNKY</button>
+                <button class="preset-btn" data-preset="ruido-caotico" id="preset-noise">RUIDO CAÓTICO</button>
             </div>
         </div>
         
-        <!-- Añadir el contenedor del visualizador justo antes del div.keyboard-container -->
+        <!-- Contenedor del visualizador -->
         <div class="visualizer-container">
-            <h2>VISUALIZADOR</h2>
+            <h2 id="visualizer-title">VISUALIZADOR</h2>
             <canvas id="waveform-visualizer"></canvas>
         </div>
         
@@ -156,6 +165,7 @@
                     <button id="octave-down" class="octave-btn">▼</button>
                     <button id="octave-up" class="octave-btn">▲</button>
                 </div>
+                <button id="stop-button" class="stop-btn">STOP</button>
             </div>
         </div>
         
@@ -165,7 +175,7 @@
         </div>
         
         <footer class="footer">
-            <p>Powered by <a href="https://www.trafulmusic.com" target="_blank">Traful</a></p>
+            <p id="footer-text">Powered by <a href="https://www.trafulmusic.com" target="_blank">Traful</a></p>
         </footer>
     </div>
     
